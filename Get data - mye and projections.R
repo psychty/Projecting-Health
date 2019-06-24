@@ -18,11 +18,17 @@
 # 
 # Figures may not add exactly due to rounding.
 
+# Create a project folder if it does not exist in your working directory
+if(file.exists("./Projecting-Health") ==  FALSE){
+  dir.create("./Projecting-Health")}
+
 # Choose areas ####
 
 # Areas_to_include <- c("Adur", "Arun", "Chichester", "Crawley", "Horsham", "Mid Sussex", "Worthing", "NHS Coastal West Sussex CCG","West Sussex", "NHS Crawley CCG", "NHS Horsham and Mid Sussex CCG")
 
 #Areas_to_include <- c("Basingstoke and Deane","East Hampshire","Eastleigh","Fareham","Gosport","Hart","Havant","New Forest","Rushmoor","Test Valley","Hampshire", "Winchester", "NHS North East Hampshire and Farnham CCG", "NHS North Hampshire CCG", "NHS South Eastern Hampshire CCG", "NHS West Hampshire CCG", "NHS Fareham and Gosport CCG", "Portsmouth")
+
+Areas_to_include <- c("Eastbourne", "Hastings", "Lewes","Rother", "Wealden","Adur", "Arun", "Chichester", "Crawley", "Horsham", "Mid Sussex", "Worthing", "Brighton and Hove", "NHS Brighton and Hove CCG", "NHS Coastal West Sussex CCG", "NHS Crawley CCG","NHS Eastbourne, Hailsham and Seaford CCG", "NHS Hastings and Rother CCG","NHS High Weald Lewes Havens CCG", "NHS Horsham and Mid Sussex CCG", "West Sussex", "East Sussex")
 
 # This uses the easypackages package to load several libraries at once. Note: it should only be used when you are confident that all packages are installed as it will be more difficult to spot load errors compared to loading each one individually.
 library(easypackages)
@@ -35,26 +41,6 @@ if(!(exists("Areas_to_include"))){
 
 if(exists("Areas_to_include")){
 
-# library(readxl)
-# library(readr)
-# library(plyr)
-# library(dplyr)
-# library(ggplot2)
-# library(png)
-# library(tidyverse)
-# library(readxl)
-# library(reshape2)
-# library(scales)
-# library(viridis)
-# library(rgdal)
-# library(officer)
-# library(flextable)
-# library(tmaptools)
-# library(lemon)
-# library(leaflet)
-# library(fingertipsR)
-# library(PHEindicatormethods)
-
 capwords = function(s, strict = FALSE) {
   cap = function(s) paste(toupper(substring(s, 1, 1)),
                           {s = substring(s, 2); if(strict) tolower(s) else s},sep = "", collapse = " " )
@@ -62,7 +48,7 @@ capwords = function(s, strict = FALSE) {
 
 # Create a lookup for area codes ####
 
-if(!(file.exists("~/Projecting-Health/Area_lookup_table.csv") & file.exists("~/Projecting-Health/Area_types_table.csv"))){
+if(!(file.exists("./Projecting-Health/Area_lookup_table.csv") & file.exists("~/Projecting-Health/Area_types_table.csv"))){
 LAD <- read_csv(url("https://opendata.arcgis.com/datasets/a267b55f601a4319a9955b0197e3cb81_0.csv"), col_types = cols(LAD17CD = col_character(),LAD17NM = col_character(),  LAD17NMW = col_character(),  FID = col_integer()))
 
 Counties <- read_csv(url("https://opendata.arcgis.com/datasets/7e6bfb3858454ba79f5ab3c7b9162ee7_0.csv"), col_types = cols(CTY17CD = col_character(),  CTY17NM = col_character(),  Column2 = col_character(),  Column3 = col_character(),  FID = col_integer()))
@@ -96,12 +82,12 @@ England <- data.frame(Area_Code = "E92000001", Area_Name = "England", Area_Type 
 Areas <- rbind(LAD, CCG, Counties, Region, England)
 rm(LAD, CCG, Counties, Region, England, UA)
 
-write.csv(lookup, "~/Projecting-Health/Area_lookup_table.csv", row.names = FALSE)
-write.csv(Areas, "~/Projecting-Health/Area_types_table.csv", row.names = FALSE)
+write.csv(lookup, "./Projecting-Health/Area_lookup_table.csv", row.names = FALSE)
+write.csv(Areas, "./Projecting-Health/Area_types_table.csv", row.names = FALSE)
 }
 
-Lookup <- read_csv("~/Projecting-Health/Area_lookup_table.csv", col_types = cols(LTLA17CD = col_character(),LTLA17NM = col_character(), UTLA17CD = col_character(),  UTLA17NM = col_character(), FID = col_character()))
-Areas <- read_csv("~/Projecting-Health/Area_types_table.csv", col_types = cols(Area_Code = col_character(), Area_Name = col_character(), Area_Type = col_character()))
+Lookup <- read_csv("./Projecting-Health/Area_lookup_table.csv", col_types = cols(LTLA17CD = col_character(),LTLA17NM = col_character(), UTLA17CD = col_character(),  UTLA17NM = col_character(), FID = col_character()))
+Areas <- read_csv("./Projecting-Health/Area_types_table.csv", col_types = cols(Area_Code = col_character(), Area_Name = col_character(), Area_Type = col_character()))
 }
 
 if(length(setdiff(Areas_to_include, Areas$Area_Name))>0){
@@ -111,13 +97,13 @@ if(length(setdiff(Areas_to_include, Areas$Area_Name))>0){
 if(length(setdiff(Areas_to_include, Areas$Area_Name)) == 0){
 # NOMIS geographies ####
 
-if(!(file.exists("~/Projecting-Health/NOMIS_area_codes.csv"))){
-  N_records_MYE_LTLA <- floor(as.numeric(read_csv("http://www.nomisweb.co.uk/api/v01/dataset/NM_2002_1.data.csv?geography=1879048193...1879048573,1879048583,1879048574...1879048582&date=latest&select=record_count&recordlimit=1", col_types = cols(RECORD_COUNT = col_double())))/25000)
+if(!(file.exists("./Projecting-Health/NOMIS_area_codes.csv"))){
+  N_records_MYE_LTLA <- floor(as.numeric(read_csv(url("http://www.nomisweb.co.uk/api/v01/dataset/NM_2002_1.data.csv?geography=1820327937...1820328318,1879048193...1879048573,1879048583,1879048574...1879048582&date=latest&select=record_count&recordlimit=1"), col_types = cols(RECORD_COUNT = col_double())))/25000)
   
   NOMIS_LTLA_codes <- data.frame(GEOGRAPHY_CODE = character(), GEOGRAPHY_NAME = character(), GEOGRAPHY = character())
   
-    for(i in 0:N_records_MYE_LTLA){
-    df <- read_csv(paste0("http://www.nomisweb.co.uk/api/v01/dataset/NM_2002_1.data.csv?geography=1879048193...1879048573,1879048583,1879048574...1879048582&date=latest&select=geography_code,geography_name,geography&recordoffset=", 25000 * i), col_types = cols(GEOGRAPHY_CODE = col_character(),GEOGRAPHY_NAME = col_character(), GEOGRAPHY = col_character())) %>% 
+  for(i in 0:N_records_MYE_LTLA){
+    df <- read_csv(url(paste0("http://www.nomisweb.co.uk/api/v01/dataset/NM_2002_1.data.csv?geography=1820327937...1820328318,1879048193...1879048573,1879048583,1879048574...1879048582&date=latest&select=geography_code,geography_name,geography&recordoffset=", 25000 * i)), col_types = cols(GEOGRAPHY_CODE = col_character(),GEOGRAPHY_NAME = col_character(), GEOGRAPHY = col_character())) %>% 
       unique()
     
     NOMIS_LTLA_codes <- NOMIS_LTLA_codes %>% 
@@ -127,14 +113,16 @@ if(!(file.exists("~/Projecting-Health/NOMIS_area_codes.csv"))){
     }
   
   NOMIS_LTLA_codes <- NOMIS_LTLA_codes %>% 
+    unique() %>% 
     left_join(Areas, by = c("GEOGRAPHY_CODE" = "Area_Code"))
   
-  N_records_MYE_UTLA <- floor(as.numeric(read_csv("http://www.nomisweb.co.uk/api/v01/dataset/NM_2002_1.data.csv?geography=1870659585...1870659791,1870659801,1870659792...1870659800&date=latest&select=record_count&recordlimit=1", col_types = cols(RECORD_COUNT = col_double())))/25000)
+  
+  N_records_MYE_UTLA <- floor(as.numeric(read_csv(url("http://www.nomisweb.co.uk/api/v01/dataset/NM_2002_1.data.csv?geography=1870659585...1870659791,1870659801,1870659792...1870659800&date=latest&select=record_count&recordlimit=1"), col_types = cols(RECORD_COUNT = col_double())))/25000)
   
   NOMIS_UTLA_codes <- data.frame(GEOGRAPHY_CODE = character(), GEOGRAPHY_NAME = character(), GEOGRAPHY = character())
   
   for(i in 0:N_records_MYE_UTLA){
-    df <- read_csv(paste0("http://www.nomisweb.co.uk/api/v01/dataset/NM_2002_1.data.csv?geography=1870659585...1870659791,1870659801,1870659792...1870659800&date=latest&select=geography_code,geography_name,geography&recordoffset=", 25000 * i), col_types = cols(GEOGRAPHY_CODE = col_character(),GEOGRAPHY_NAME = col_character(), GEOGRAPHY = col_character())) %>% 
+    df <- read_csv(url(paste0("http://www.nomisweb.co.uk/api/v01/dataset/NM_2002_1.data.csv?geography=1870659585...1870659791,1870659801,1870659792...1870659800&date=latest&select=geography_code,geography_name,geography&recordoffset=", 25000 * i)), col_types = cols(GEOGRAPHY_CODE = col_character(),GEOGRAPHY_NAME = col_character(), GEOGRAPHY = col_character())) %>% 
       unique()
     
     NOMIS_UTLA_codes <- NOMIS_UTLA_codes %>% 
@@ -150,12 +138,12 @@ if(!(file.exists("~/Projecting-Health/NOMIS_area_codes.csv"))){
   NOMIS_LA_codes <- NOMIS_LTLA_codes %>% 
     bind_rows(NOMIS_UTLA_codes)
     
-N_records_MYE_CCG <- floor(as.numeric(read_csv("http://www.nomisweb.co.uk/api/v01/dataset/NM_2010_1.data.csv?geography=1828716545...1828716739&date=latest&select=record_count&recordlimit=1", col_types = cols(RECORD_COUNT = col_double())))/25000)
+N_records_MYE_CCG <- floor(as.numeric(read_csv(url("http://www.nomisweb.co.uk/api/v01/dataset/NM_2010_1.data.csv?geography=1828716545...1828716739&date=latest&select=record_count&recordlimit=1"), col_types = cols(RECORD_COUNT = col_double())))/25000)
 
 NOMIS_CCG_codes <- data.frame(GEOGRAPHY_CODE = character(), GEOGRAPHY_NAME = character(), GEOGRAPHY = character())
 
 for(i in 0:N_records_MYE_CCG){
-  df <- read_csv(paste0("http://www.nomisweb.co.uk/api/v01/dataset/NM_2010_1.data.csv?geography=1828716545...1828716739&date=latest&select=geography_code,geography_name,geography&recordoffset=", 25000 * i), col_types = cols(GEOGRAPHY_CODE = col_character(),GEOGRAPHY_NAME = col_character(), GEOGRAPHY = col_character())) %>% 
+  df <- read_csv(url(paste0("http://www.nomisweb.co.uk/api/v01/dataset/NM_2010_1.data.csv?geography=1828716545...1828716739&date=latest&select=geography_code,geography_name,geography&recordoffset=", 25000 * i)), col_types = cols(GEOGRAPHY_CODE = col_character(),GEOGRAPHY_NAME = col_character(), GEOGRAPHY = col_character())) %>% 
     unique()
   
   NOMIS_CCG_codes <- NOMIS_CCG_codes %>% 
@@ -165,7 +153,7 @@ for(i in 0:N_records_MYE_CCG){
 NOMIS_CCG_codes <- NOMIS_CCG_codes %>% 
   left_join(Areas, by = c("GEOGRAPHY_CODE" = "Area_Code")) 
 
-NOMIS_reg_eng <- read_csv("http://www.nomisweb.co.uk/api/v01/dataset/NM_2002_1.data.csv?geography=2092957699,2013265921...2013265932&date=latest&select=geography_code,geography_name,geography", col_types = cols(GEOGRAPHY_CODE = col_character(),GEOGRAPHY_NAME = col_character(), GEOGRAPHY = col_character()))%>% 
+NOMIS_reg_eng <- read_csv(url("http://www.nomisweb.co.uk/api/v01/dataset/NM_2002_1.data.csv?geography=2092957699,2013265921...2013265932&date=latest&select=geography_code,geography_name,geography"), col_types = cols(GEOGRAPHY_CODE = col_character(),GEOGRAPHY_NAME = col_character(), GEOGRAPHY = col_character()))%>% 
   unique()%>% 
   filter(substr(GEOGRAPHY_CODE, 1, 1) == "E") %>% 
   left_join(Areas, by = c("GEOGRAPHY_CODE" = "Area_Code")) 
@@ -176,9 +164,9 @@ NOMIS_codes <- NOMIS_LA_codes %>%
   unique() %>% 
   select(-Area_Name)
 
-write.csv(NOMIS_codes, "~/Projecting-Health/NOMIS_area_codes.csv", row.names = FALSE)}
+write.csv(NOMIS_codes, "./Projecting-Health/NOMIS_area_codes.csv", row.names = FALSE)}
 
-NOMIS_codes <- read_csv("~/Projecting-Health/NOMIS_area_codes.csv", col_types = cols(GEOGRAPHY_CODE = col_character(),GEOGRAPHY_NAME = col_character(),GEOGRAPHY = col_double(),  Area_Type = col_character()))
+NOMIS_codes <- read_csv("./Projecting-Health/NOMIS_area_codes.csv", col_types = cols(GEOGRAPHY_CODE = col_character(),GEOGRAPHY_NAME = col_character(),GEOGRAPHY = col_double(),  Area_Type = col_character()))
 
 Chosen_area_codes <- subset(Areas, Area_Name %in% Areas_to_include) %>% 
   left_join(NOMIS_codes[c("GEOGRAPHY", "GEOGRAPHY_CODE")], by = c("Area_Code" = "GEOGRAPHY_CODE"))
@@ -186,11 +174,10 @@ Chosen_area_codes <- subset(Areas, Area_Name %in% Areas_to_include) %>%
 # Projections ####
 
 if(!(file.exists("~/Projecting-Health/2016 SNPP CCG pop females.csv"))){
-download.file("https://www.ons.gov.uk/file?uri=/peoplepopulationandcommunity/populationandmigration/populationprojections/datasets/clinicalcommissioninggroupsinenglandz2/2016based/snppz2ccgpop.zip", "~/Projecting-Health/CCG_projections_2016_based.zip", mode = "wb")
-unzip("~/Projecting-Health/CCG_projections_2016_based.zip", exdir = "~/Projecting-Health")
-file.remove("~/Projecting-Health/CCG_projections_2016_based.zip")
+download.file("https://www.ons.gov.uk/file?uri=/peoplepopulationandcommunity/populationandmigration/populationprojections/datasets/clinicalcommissioninggroupsinenglandz2/2016based/snppz2ccgpop.zip", "./Projecting-Health/CCG_projections_2016_based.zip", mode = "wb")
+unzip("./Projecting-Health/CCG_projections_2016_based.zip", exdir = "./Projecting-Health")
+file.remove("./Projecting-Health/CCG_projections_2016_based.zip")
 }
-
 
 #if(!(file.exists("~/Projecting-Health/2016 SNPP Population females.csv"))){
 #download.file("https://www.ons.gov.uk/file?uri=/peoplepopulationandcommunity/populationandmigration/populationprojections/datasets/localauthoritiesinenglandz1/2016based/snppz1population.zip", "~/Projecting-Health/LA_projections_2016_based.zip", mode = "wb")
@@ -207,7 +194,7 @@ file.remove("~/Projecting-Health/CCG_projections_2016_based.zip")
 ONS_projections_SYOA <- data.frame(GEOGRAPHY = double(),GEOGRAPHY_NAME = character(), GEOGRAPHY_CODE = character(),PROJECTED_YEAR_NAME = double(),GENDER_NAME = character(),C_AGE_NAME = character(),  MEASURES_NAME = character(), OBS_VALUE = double(), OBS_STATUS_NAME = character(), RECORD_COUNT = double())
 
 for(i in 0:floor(as.numeric(read_csv(paste0("http://www.nomisweb.co.uk/api/v01/dataset/NM_2006_1.data.csv?geography=",paste(as.numeric(Chosen_area_codes$GEOGRAPHY), collapse = ","),"&projected_year=2016...2041&gender=1,2&c_age=101...191&measures=20100&select=record_count&recordlimit=1"), col_types = cols(RECORD_COUNT = col_double())))/25000)){
-  df <- read_csv(paste0("http://www.nomisweb.co.uk/api/v01/dataset/NM_2006_1.data.csv?geography=",paste(as.numeric(Chosen_area_codes$GEOGRAPHY), collapse = ","),"&projected_year=2016...2041&gender=1,2&c_age=101...191&measures=20100&select=geography,geography_name,geography_code,projected_year_name,gender_name,c_age_name,measures_name,obs_value,obs_status_name,record_count&recordoffset=", 25000 * i), col_types = cols(GEOGRAPHY = col_double(),GEOGRAPHY_NAME = col_character(),  GEOGRAPHY_CODE = col_character(),PROJECTED_YEAR_NAME = col_double(), GENDER_NAME = col_character(),C_AGE_NAME = col_character(), MEASURES_NAME = col_character(),OBS_VALUE = col_double(), OBS_STATUS_NAME = col_character(),RECORD_COUNT = col_double()))
+  df <- read_csv(url(paste0("http://www.nomisweb.co.uk/api/v01/dataset/NM_2006_1.data.csv?geography=",paste(as.numeric(Chosen_area_codes$GEOGRAPHY), collapse = ","),"&projected_year=2016...2041&gender=1,2&c_age=101...191&measures=20100&select=geography,geography_name,geography_code,projected_year_name,gender_name,c_age_name,measures_name,obs_value,obs_status_name,record_count&recordoffset=", 25000 * i)), col_types = cols(GEOGRAPHY = col_double(),GEOGRAPHY_NAME = col_character(),  GEOGRAPHY_CODE = col_character(),PROJECTED_YEAR_NAME = col_double(), GENDER_NAME = col_character(),C_AGE_NAME = col_character(), MEASURES_NAME = col_character(),OBS_VALUE = col_double(), OBS_STATUS_NAME = col_character(),RECORD_COUNT = col_double()))
   
   ONS_projections_SYOA <- ONS_projections_SYOA %>% 
     bind_rows(df)
@@ -226,8 +213,8 @@ ONS_projections_SYOA <- ONS_projections_SYOA %>%
 # We will need to add any CCG projections to this.
 setdiff(Chosen_area_codes$Area_Name, ONS_projections_SYOA$AREA_NAME) # This shows that they were not included
 
-ONS_ccg_projections_df <- read_csv("~/Projecting-Health/2016 SNPP CCG pop females.csv", col_types = cols(.default = col_double(), AREA_CODE = col_character(),  AREA_NAME = col_character(),  COMPONENT = col_character(),  SEX = col_character(),  AGE_GROUP = col_character())) %>% 
-  bind_rows(read_csv("~/Projecting-Health/2016 SNPP CCG pop males.csv",col_types = cols(.default = col_double(), AREA_CODE = col_character(),  AREA_NAME = col_character(),  COMPONENT = col_character(),  SEX = col_character(),  AGE_GROUP = col_character()))) %>% 
+ONS_ccg_projections_df <- read_csv("./Projecting-Health/2016 SNPP CCG pop females.csv", col_types = cols(.default = col_double(), AREA_CODE = col_character(),  AREA_NAME = col_character(),  COMPONENT = col_character(),  SEX = col_character(),  AGE_GROUP = col_character())) %>% 
+  bind_rows(read_csv("./Projecting-Health/2016 SNPP CCG pop males.csv",col_types = cols(.default = col_double(), AREA_CODE = col_character(),  AREA_NAME = col_character(),  COMPONENT = col_character(),  SEX = col_character(),  AGE_GROUP = col_character()))) %>% 
   filter(AREA_CODE %in% c(Chosen_area_codes$Area_Code)) %>% 
   select(-c(COMPONENT)) %>% 
   mutate_if(is.numeric, round,0)
@@ -479,8 +466,8 @@ Areas_projections_file <- ONS_projection_1841_quinary %>%
 
 ONS_mye_SYOA <- data.frame(DATE_NAME = double(), GEOGRAPHY = double(),GEOGRAPHY_NAME = character(), GEOGRAPHY_CODE = character(), GENDER_NAME = character(),C_AGE_NAME = character(),  MEASURES_NAME = character(), OBS_VALUE = double(), OBS_STATUS_NAME = character(), RECORD_COUNT = double())
 
-for(i in 0:floor(as.numeric(read_csv(paste0("http://www.nomisweb.co.uk/api/v01/dataset/NM_2002_1.data.csv?geography=",paste(as.numeric(Chosen_area_codes$GEOGRAPHY), collapse = ","),"&date=latestMINUS6-latest&gender=1,2&c_age=101...191&measures=20100&select=record_count&recordlimit=1"), col_types = cols(RECORD_COUNT = col_double())))/25000)){
-  df <- read_csv(paste0("http://www.nomisweb.co.uk/api/v01/dataset/NM_2002_1.data.csv?geography=",paste(as.numeric(Chosen_area_codes$GEOGRAPHY), collapse = ","),"&date=latestMINUS6-latest&gender=1,2&c_age=101...191&measures=20100&select=date_name,geography,geography_name,geography_code,gender_name,c_age_name,measures_name,obs_value,obs_status_name,record_count&recordoffset=", 25000 * i), col_types = cols(DATE_NAME = col_double(), GEOGRAPHY = col_double(),GEOGRAPHY_NAME = col_character(),  GEOGRAPHY_CODE = col_character(), GENDER_NAME = col_character(),C_AGE_NAME = col_character(), MEASURES_NAME = col_character(),OBS_VALUE = col_double(), RECORD_COUNT = col_double()))
+for(i in 0:floor(as.numeric(read_csv(url(paste0("http://www.nomisweb.co.uk/api/v01/dataset/NM_2002_1.data.csv?geography=",paste(as.numeric(Chosen_area_codes$GEOGRAPHY), collapse = ","),"&date=latestMINUS6-latest&gender=1,2&c_age=101...191&measures=20100&select=record_count&recordlimit=1")), col_types = cols(RECORD_COUNT = col_double())))/25000)){
+  df <- read_csv(url(paste0("http://www.nomisweb.co.uk/api/v01/dataset/NM_2002_1.data.csv?geography=",paste(as.numeric(Chosen_area_codes$GEOGRAPHY), collapse = ","),"&date=latestMINUS6-latest&gender=1,2&c_age=101...191&measures=20100&select=date_name,geography,geography_name,geography_code,gender_name,c_age_name,measures_name,obs_value,obs_status_name,record_count&recordoffset=", 25000 * i)), col_types = cols(DATE_NAME = col_double(), GEOGRAPHY = col_double(),GEOGRAPHY_NAME = col_character(),  GEOGRAPHY_CODE = col_character(), GENDER_NAME = col_character(),C_AGE_NAME = col_character(), MEASURES_NAME = col_character(),OBS_VALUE = col_double(), RECORD_COUNT = col_double()))
   
   ONS_mye_SYOA <- ONS_mye_SYOA %>% 
     bind_rows(df)
@@ -488,8 +475,8 @@ for(i in 0:floor(as.numeric(read_csv(paste0("http://www.nomisweb.co.uk/api/v01/d
 
 ONS_mye_ccg_SYOA <- data.frame(DATE_NAME = double(), GEOGRAPHY = double(),GEOGRAPHY_NAME = character(), GEOGRAPHY_CODE = character(), GENDER_NAME = character(),C_AGE_NAME = character(),  MEASURES_NAME = character(), OBS_VALUE = double(), OBS_STATUS_NAME = character(), RECORD_COUNT = double())
 
-for(i in 0:floor(as.numeric(read_csv(paste0("http://www.nomisweb.co.uk/api/v01/dataset/NM_2010_1.data.csv?geography=",paste(as.numeric(Chosen_area_codes$GEOGRAPHY), collapse = ","),"&date=latestMINUS6-latest&gender=1,2&c_age=101...191&measures=20100&select=record_count&recordlimit=1"), col_types = cols(RECORD_COUNT = col_double())))/25000)){
-  df <- read_csv(paste0("http://www.nomisweb.co.uk/api/v01/dataset/NM_2010_1.data.csv?geography=",paste(as.numeric(Chosen_area_codes$GEOGRAPHY), collapse = ","),"&date=latestMINUS6-latest&gender=1,2&c_age=101...191&measures=20100&select=date_name,geography,geography_name,geography_code,gender_name,c_age_name,measures_name,obs_value,obs_status_name,record_count&recordoffset=", 25000 * i), col_types = cols(DATE_NAME = col_double(), GEOGRAPHY = col_double(),GEOGRAPHY_NAME = col_character(),  GEOGRAPHY_CODE = col_character(), GENDER_NAME = col_character(),C_AGE_NAME = col_character(), MEASURES_NAME = col_character(),OBS_VALUE = col_double(), RECORD_COUNT = col_double()))
+for(i in 0:floor(as.numeric(read_csv(url(paste0("http://www.nomisweb.co.uk/api/v01/dataset/NM_2010_1.data.csv?geography=",paste(as.numeric(Chosen_area_codes$GEOGRAPHY), collapse = ","),"&date=latestMINUS6-latest&gender=1,2&c_age=101...191&measures=20100&select=record_count&recordlimit=1")), col_types = cols(RECORD_COUNT = col_double())))/25000)){
+  df <- read_csv(url(paste0("http://www.nomisweb.co.uk/api/v01/dataset/NM_2010_1.data.csv?geography=",paste(as.numeric(Chosen_area_codes$GEOGRAPHY), collapse = ","),"&date=latestMINUS6-latest&gender=1,2&c_age=101...191&measures=20100&select=date_name,geography,geography_name,geography_code,gender_name,c_age_name,measures_name,obs_value,obs_status_name,record_count&recordoffset=", 25000 * i)), col_types = cols(DATE_NAME = col_double(), GEOGRAPHY = col_double(),GEOGRAPHY_NAME = col_character(),  GEOGRAPHY_CODE = col_character(), GENDER_NAME = col_character(),C_AGE_NAME = col_character(), MEASURES_NAME = col_character(),OBS_VALUE = col_double(), RECORD_COUNT = col_double()))
   
   ONS_mye_ccg_SYOA <- ONS_mye_ccg_SYOA %>% 
     bind_rows(df)
@@ -588,6 +575,6 @@ Area_population_df <- Areas_estimates_file %>%
 
 rm(df, i, ONS_mye_SYOA, ONS_mye_ccg_SYOA, ONS_projections_SYOA, ONS_ccg_projections_df, ONS_MYE_10_year, ONS_MYE_broad, ONS_MYE_quinary, ONS_projection_1841_10_year, ONS_projection_1841_broad, ONS_projection_1841_quinary)
 
-write.csv(Area_population_df, file = "~/Projecting-Health/Area_population_df.csv", row.names = FALSE)
+write.csv(Area_population_df, file = "./Projecting-Health/Area_population_df.csv", row.names = FALSE)
 
 }

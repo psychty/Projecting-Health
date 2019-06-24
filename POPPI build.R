@@ -21,7 +21,9 @@ if(!(exists("Areas_to_include"))){
 
 # Areas_to_include <- c("Basingstoke and Deane","East Hampshire","Eastleigh","Fareham","Gosport","Hart","Havant","New Forest","Rushmoor","Test Valley","Hampshire", "Winchester", "NHS North East Hampshire and Farnham CCG", "NHS North Hampshire CCG", "NHS South Eastern Hampshire CCG", "NHS West Hampshire CCG", "NHS Fareham and Gosport CCG", "Portsmouth")
 
-Areas_to_include <- c("Adur", "Arun", "Chichester", "Crawley", "Horsham", "Mid Sussex", "Worthing", "NHS Coastal West Sussex CCG","West Sussex", "NHS Crawley CCG", "NHS Horsham and Mid Sussex CCG")
+# Areas_to_include <- c("Adur", "Arun", "Chichester", "Crawley", "Horsham", "Mid Sussex", "Worthing", "NHS Coastal West Sussex CCG","West Sussex", "NHS Crawley CCG", "NHS Horsham and Mid Sussex CCG")
+
+Areas_to_include <- c("Eastbourne", "Hastings", "Lewes","Rother", "Wealden","Adur", "Arun", "Chichester", "Crawley", "Horsham", "Mid Sussex", "Worthing", "Brighton and Hove", "NHS Brighton and Hove CCG", "NHS Coastal West Sussex CCG", "NHS Crawley CCG","NHS Eastbourne, Hailsham and Seaford CCG", "NHS Hastings and Rother CCG","NHS High Weald Lewes Havens CCG", "NHS Horsham and Mid Sussex CCG", "West Sussex", "East Sussex")
 
 if(!(file.exists("~/Projecting-Health/Area_population_df.csv"))){
   print("Area_population_df is not available, it will be built using the 'Areas_to_include' object")
@@ -204,7 +206,7 @@ cs_right <- CellStyle(wb) +
 cs_thousand_sep <- CellStyle(wb) +
   DataFormat("#,##0")
 cs_monies <- CellStyle(wb) +
-  DataFormat("£#,##0.00")
+  DataFormat("?#,##0.00")
 cs_top_border <- CellStyle(wb) +
   Border(color = "black", position = "TOP", pen = "BORDER_THIN")
 cs_bottom_border <- CellStyle(wb) +
@@ -214,7 +216,7 @@ cs_top_bottom_border <- CellStyle(wb) +
   Border(color = "black", position = c("TOP","BOTTOM"), pen = "BORDER_THIN")
 
 cs_monies_coloured <- CellStyle(wb) +
-  DataFormat("£#,##0.00") + 
+  DataFormat("?#,##0.00") + 
   Fill(foregroundColor = "#f1eae1")
 
 cs_thousand_sep_coloured <- CellStyle(wb) +
