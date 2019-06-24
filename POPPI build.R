@@ -25,26 +25,28 @@ if(!(exists("Areas_to_include"))){
 
 Areas_to_include <- c("Eastbourne", "Hastings", "Lewes","Rother", "Wealden","Adur", "Arun", "Chichester", "Crawley", "Horsham", "Mid Sussex", "Worthing", "Brighton and Hove", "NHS Brighton and Hove CCG", "NHS Coastal West Sussex CCG", "NHS Crawley CCG","NHS Eastbourne, Hailsham and Seaford CCG", "NHS Hastings and Rother CCG","NHS High Weald Lewes Havens CCG", "NHS Horsham and Mid Sussex CCG", "West Sussex", "East Sussex")
 
-if(!(file.exists("~/Projecting-Health/Area_population_df.csv"))){
+if(!(file.exists("./Projecting-Health/Area_population_df.csv"))){
   print("Area_population_df is not available, it will be built using the 'Areas_to_include' object")
-  source("~/Projecting-Health/Get data - mye and projections.R")
+  source("~/Documents/Repositories/Projecting-Health/Get data - mye and projections.R")
   
-  if(file.exists("~/Projecting-Health/Area_population_df.csv")){
+  if(file.exists("./Projecting-Health/Area_population_df.csv")){
     print("Area_population_df is now available.")
   }
 }
 
-if(exists("Areas_to_include") & file.exists("~/Projecting-Health/Area_population_df.csv")){
+if(exists("Areas_to_include") & file.exists("./Projecting-Health/Area_population_df.csv")){
   print("Both objects are available")
-  Area_population_df <- read_csv("~/Projecting-Health/Area_population_df.csv", col_types = cols(Area_Name = col_character(),Area_Code = col_character(),Area_Type = col_character(),  Sex = col_character(),Age_group = col_character(),Age_band_type = col_character(),Year = col_double(),Population = col_double(),Data_type = col_character()))  
+  Area_population_df <- read_csv("./Projecting-Health/Area_population_df.csv", col_types = cols(Area_Name = col_character(),Area_Code = col_character(),Area_Type = col_character(),  Sex = col_character(),Age_group = col_character(),Age_band_type = col_character(),Year = col_double(),Population = col_double(),Data_type = col_character()))  
   
-  Areas <- read_csv("~/Projecting-Health/Area_lookup_table.csv", col_types = cols(LTLA17CD = col_character(),LTLA17NM = col_character(),UTLA17CD = col_character(),UTLA17NM = col_character(),FID = col_double()))
-  Lookup <- read_csv("~/Projecting-Health/Area_types_table.csv", col_types = cols(Area_Code = col_character(),Area_Name = col_character(),Area_Type = col_character()))
+  Areas <- read_csv("./Projecting-Health/Area_lookup_table.csv", col_types = cols(LTLA17CD = col_character(),LTLA17NM = col_character(),UTLA17CD = col_character(),UTLA17NM = col_character(),FID = col_double()))
+  Lookup <- read_csv("./Projecting-Health/Area_types_table.csv", col_types = cols(Area_Code = col_character(),Area_Name = col_character(),Area_Type = col_character()))
   
   if(length(setdiff(Areas_to_include, Area_population_df$Area_Name))>0){
     print("There are some areas chosen that are not in the Area_population_df. The 'Get data - mye and projections' script will now run and will overwrite the Area_population_df.")
-    source("~/Projecting-Health/Get data - mye and projections.R")
+    source("~/Documents/Repositories/Projecting-Health/Get data - mye and projections.R")
   }
+  
+  
   
   if(length(setdiff(Areas_to_include, Area_population_df$Area_Name))>0){
     print("There are still some areas chosen that are not in the Area_population_df. Check the Areas_to_include object.")
