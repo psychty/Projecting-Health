@@ -1,4 +1,4 @@
-
+options(java.parameters = "-Xmx2048m")
 
 library(easypackages)
 # This uses the easypackages package to load several libraries at once. Note: it should only be used when you are confident that all packages are installed as it will be more difficult to spot load errors compared to loading each one individually.
@@ -210,6 +210,7 @@ selected_areas_gbd_LE_tables <- HALE_gbd %>%
   rename(value = val) %>% 
   rename(area = location) %>% 
   filter(age != "All Ages") %>% 
+  filter(sex == "Both") %>% 
   filter(area %in% Areas_to_include)%>% 
   select(-metric)
 
@@ -414,8 +415,8 @@ addDataFrame(unique(Districts_UA_selected$Area_Name), sheet,
 setColumnWidth(sheet, colIndex = 6, colWidth = max(nchar(Districts_UA_selected$Area_Name)))
 
 createRange("Area_list", cells[[2,1]], cells[[length(unique(Area_population_df$Area_Name))+1,1]])
-createRange("Districts_UA_selected", cells[[2,5]], cells[[length(unique(Districts_UA_selected$Area_Name))+1,1]])
-createRange("Counties_UA_selected", cells[[2,6]], cells[[length(unique(Counties_UA_selected$Area_Name))+1,1]])
+createRange("Districts_UA_selected", cells[[2,5]], cells[[length(unique(Districts_UA_selected$Area_Name))+1,5]])
+createRange("Counties_UA_selected", cells[[2,6]], cells[[length(unique(Counties_UA_selected$Area_Name))+1,6]])
 
 wb$setActiveSheet(0L)
 wb$setSheetHidden(18L, 1L) # This assumes List is sheet number 18.
@@ -423,7 +424,7 @@ wb$setSheetHidden(18L, 1L) # This assumes List is sheet number 18.
 removeSheet(wb, sheetName = "Raw Data")
 sheet <- createSheet(wb, "Raw Data")
 rows <- createRow(sheet, rowIndex = 1:nrow(Area_population_df))
-cells <- createCell(rows, colIndex = 1:9)
+cells <- createCell(rows, colIndex = 1:10)
 
 setCellValue(cells[[1,1]], "Area_name")
 setCellStyle(cells[[1,1]], cs_left)
@@ -443,6 +444,9 @@ setCellValue(cells[[1,8]], "Population")
 setCellStyle(cells[[1,8]], cs_left)
 setCellValue(cells[[1,9]], "Data_type")
 setCellStyle(cells[[1,9]], cs_left)
+setCellValue(cells[[1,10]], "All_age_population")
+setCellStyle(cells[[1,10]], cs_left)
+
 
 addDataFrame(as.data.frame(Area_population_df), sheet, 
              startRow = 2, 
@@ -451,9 +455,11 @@ addDataFrame(as.data.frame(Area_population_df), sheet,
              row.names = FALSE)
 
 # width of collumn
-autoSizeColumn(sheet, colIndex = 1:9)
+autoSizeColumn(sheet, colIndex = 1:10)
 
 wb$setSheetHidden(18L, 1L) # This assumes Raw Data is sheet number 17 (which it should be now, as index starts at 0)
+
+rm(Area_population_df, Area_population_broad_combined, Area_population_broad_sex)
 
 removeSheet(wb, sheetName = "OADR Data")
 sheet <- createSheet(wb, "OADR Data")
@@ -484,6 +490,8 @@ addDataFrame(as.data.frame(OADR), sheet,
              startColumn = 1, 
              col.names = FALSE,
              row.names = FALSE)
+
+rm(OADR)
 
 wb$setSheetHidden(18L, 1L) # This assumes OADR Data is sheet number 10 (which it should be now, as index starts at 0)
 
@@ -517,6 +525,8 @@ addDataFrame(as.data.frame(Older_age_broad_projections), sheet,
              startColumn = 1, 
              col.names = FALSE,
              row.names = FALSE)
+
+rm(Older_age_broad_projections)
 
 wb$setSheetHidden(18L, 1L) # This assumes OADR Data is sheet number 10 (which it should be now, as index starts at 0)
 
@@ -567,6 +577,8 @@ addDataFrame(as.data.frame(LE_ONS_1517_UTLA), sheet,
              col.names = FALSE,
              row.names = FALSE)
 
+rm(LE_ONS_1517_UTLA)
+
 setCellValue(cells[[1,18]], "Indicator_name")
 setCellStyle(cells[[1,18]], cs_left)
 setCellValue(cells[[1,19]], "Area_Code")
@@ -595,6 +607,8 @@ addDataFrame(as.data.frame(Selected_LE_ONS_ts), sheet,
              startColumn = 18, 
              col.names = FALSE,
              row.names = FALSE)
+
+rm(Selected_LE_ONS_ts)
 
 setCellValue(cells[[1,30]], "Indicator_name")
 setCellStyle(cells[[1,30]], cs_left)
@@ -625,6 +639,8 @@ addDataFrame(as.data.frame(selected_HLE_ONS_UTLA_ts), sheet,
              col.names = FALSE,
              row.names = FALSE)
 
+rm(selected_HLE_ONS_UTLA_ts)
+
 setCellValue(cells[[1,42]], "Indicator_name")
 setCellStyle(cells[[1,42]], cs_left)
 setCellValue(cells[[1,43]], "Area_Code")
@@ -653,6 +669,8 @@ addDataFrame(as.data.frame(Selected_Slope_inequalities_ts), sheet,
              startColumn = 42, 
              col.names = FALSE,
              row.names = FALSE)
+
+rm(Selected_Slope_inequalities_ts)
 
 wb$setSheetHidden(18L, 1L) # This assumes ONS LE Data is sheet number 10 (which it should be now, as index starts at 0)
 
@@ -689,7 +707,7 @@ autoSizeColumn(sheet, colIndex = 1:52)
 # 
 # wb$setSheetHidden(18L, 1L) # This assumes Raw Data is sheet number 17 (which it should be now, as index starts at 0)
 
-autoSizeColumn(sheet, colIndex = 1:8)
+# autoSizeColumn(sheet, colIndex = 1:8)
 
 removeSheet(wb, sheetName = "Selected gbd data")
 sheet <- createSheet(wb, "Selected gbd data")
@@ -724,8 +742,13 @@ autoSizeColumn(sheet, colIndex = 1:8)
 
 wb$setSheetHidden(18L, 1L) # This assumes Raw Data is sheet number 17 (which it should be now, as index starts at 0)
 
-# to do - Load parameters sheet (or rebuild) and specify data validation range ####
-
 saveWorkbook(wb, file = "./Projecting-Health/STP Profile 2019 Update v1.xlsx")
 
+# There are still problems.
+
+# We can try openxlsx package as this aparently does not rely on java.
+
+# For now though, we just need to crack on!
+
+write.csv(selected_areas_gbd_LE_tables, "./Projecting-Health/selected_areas_gbd_LE_tables.csv", row.names = FALSE)
 
