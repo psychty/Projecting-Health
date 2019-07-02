@@ -1,10 +1,11 @@
 options(java.parameters = "-Xmx2048m")
 
 library(easypackages)
+
 # This uses the easypackages package to load several libraries at once. Note: it should only be used when you are confident that all packages are installed as it will be more difficult to spot load errors compared to loading each one individually.
 libraries(c("readxl", "readr", "plyr", "dplyr", "ggplot2", "png", "tidyverse", "reshape2", "scales", "viridis", "rgdal", "officer", "flextable", "tmaptools", "lemon", "fingertipsR", "PHEindicatormethods", "xlsx"))
 
- # If you have downloaded/cloned the github repo for this project you will need to make sure the filepath is recorded in the object github_repo_dir
+# If you have downloaded/cloned the github repo for this project you will need to make sure the filepath is recorded in the object github_repo_dir
 github_repo_dir <- "~/Documents/Repositories/Projecting-Health"
 
 # You must specify a set of chosen areas.
@@ -126,7 +127,7 @@ Older_age_broad_projections <- Area_population_df %>%
   select(-Age_band_type) %>% 
   group_by(Area_Name, Area_Code, Area_Type, Age_group, Sex, Data_type, Year) %>% 
   summarise(Population = sum(Population, na.rm = TRUE))
-# 
+ 
 # area_x = Older_age_broad_projections %>% 
 #   filter(Area_Name == "Adur") %>% 
 #   mutate(Year = as.character(Year))
@@ -179,6 +180,8 @@ OADR <- working_age_projections %>%
 
 OADR <- as.data.frame(OADR)
 
+rm(Area_population_broad_sex, Area_population_broad_combined)
+
 paste0("This is the ratio of older dependents (people older than 64) to the working-age population (those ages 16-64). Data are shown as the proportion of dependents per 100 working-age population. ONS present it as a rate per 1,000")
 
 # paste0("In West Sussex, in 2018, there is an estimated ", round(subset(OADR, Year == "2018", select = "Ratio_per_1000"),0), " residents aged 65+ for every 1,000 working age (16-64 years) population. This is set to increase over the next decade to ", round(subset(OADR, Year == "2028", select = "Ratio_per_1000"),0), " residents aged 65+ for every 1,000 16-64 year olds in 2028, and by 2038, there is anticipated to be ", round(subset(OADR, Year == "2038", select = "Ratio_per_1000"),0), " residents aged 65+ for every 1,000 16-64 years population; this is a ratio of one older person for every two working age residents.")
@@ -202,7 +205,7 @@ gbd_LE_tables <- HALE_gbd %>%
   bind_rows(LE_gbd) %>% 
   rename(value = val) %>% 
   rename(area = location) %>% 
-  filter(age == "All Ages") %>% 
+  filter(age == "<1 year") %>% 
   select(-metric)
 
 selected_areas_gbd_LE_tables <- HALE_gbd %>% 
@@ -213,6 +216,8 @@ selected_areas_gbd_LE_tables <- HALE_gbd %>%
   filter(sex == "Both") %>% 
   filter(area %in% Areas_to_include)%>% 
   select(-metric)
+
+write.csv(gbd_LE_tables, "./Life and Health Expectancies/gbd_LE_tables.csv", row.names = FALSE)
 
 rm(HALE_gbd, LE_gbd)
 
@@ -248,26 +253,198 @@ LE_ONS <- fingertips_data(90366, AreaTypeID = c(101,102)) %>%
   bind_rows(fingertips_data(91102, AreaTypeID = c(101,102))) %>% 
   select(IndicatorName, AreaCode, AreaName,AreaType,Sex,Age,Timeperiod,Value,LowerCI95.0limit,UpperCI95.0limit)
 
-LE_ONS_1517_UTLA <- LE_ONS %>% 
+LE_at_birth_UTLA_rank <- LE_ONS %>% 
   filter(Timeperiod == "2015 - 17") %>% 
   filter(AreaType == "County & UA") %>% 
-  left_join(Dep, by = c("AreaCode", "AreaName")) %>% 
-  unique() %>% 
   group_by(AreaType, Sex, Age, Timeperiod) %>% 
   arrange(Value) %>% 
-  mutate(Rank =  rank(Value, ties.method = "first"))
+  mutate(Rank =  rank(Value, ties.method = "first")) %>%
+  ungroup() %>% 
+  filter(IndicatorName == "Life expectancy at birth") %>% 
+  mutate(Sex = paste0(Sex, " ", tolower(IndicatorName), " rank")) %>% 
+  select(AreaName, AreaCode, Sex, Rank) %>% 
+  spread(key = Sex, value = Rank)
 
-LE_ONS_1517_LTLA <- LE_ONS %>% 
+LE_at_birth_UTLA_val <- LE_ONS %>% 
+  filter(Timeperiod == "2015 - 17") %>% 
+  filter(AreaType == "County & UA") %>% 
+  filter(IndicatorName == "Life expectancy at birth") %>% 
+  mutate(Sex = paste0(Sex, " ", tolower(IndicatorName))) %>% 
+  select(AreaName, AreaCode, Sex, Value) %>% 
+  spread(key = Sex, value = Value)
+
+LE_at_birth_UTLA_lci <- LE_ONS %>% 
+  filter(Timeperiod == "2015 - 17") %>% 
+  filter(AreaType == "County & UA") %>% 
+  filter(IndicatorName == "Life expectancy at birth") %>% 
+  mutate(Sex = paste0(Sex, " ", tolower(IndicatorName), " lci")) %>% 
+  select(AreaName, AreaCode, Sex, LowerCI95.0limit) %>% 
+  spread(key = Sex, value = LowerCI95.0limit)
+
+LE_at_birth_UTLA_uci <- LE_ONS %>% 
+  filter(Timeperiod == "2015 - 17") %>% 
+  filter(AreaType == "County & UA") %>% 
+  filter(IndicatorName == "Life expectancy at birth") %>% 
+  mutate(Sex = paste0(Sex, " ", tolower(IndicatorName), " uci")) %>% 
+  select(AreaName, AreaCode, Sex, UpperCI95.0limit) %>% 
+  spread(key = Sex, value = UpperCI95.0limit)
+
+LE_at_birth_UTLA <- LE_at_birth_UTLA_val %>% 
+  left_join(LE_at_birth_UTLA_lci, by = c("AreaCode", "AreaName")) %>% 
+  left_join(LE_at_birth_UTLA_uci, by = c("AreaCode", "AreaName")) %>%
+  left_join(LE_at_birth_UTLA_rank, by = c("AreaCode", "AreaName")) %>% 
+  select(AreaName,AreaCode,`Female life expectancy at birth`,`Female life expectancy at birth lci`,`Female life expectancy at birth uci`,`Female life expectancy at birth rank`, `Male life expectancy at birth`,`Male life expectancy at birth lci`,`Male life expectancy at birth uci`,`Male life expectancy at birth rank`)
+
+rm(LE_at_birth_UTLA_val, LE_at_birth_UTLA_lci, LE_at_birth_UTLA_uci, LE_at_birth_UTLA_rank)
+
+LE_at_65_UTLA_rank <- LE_ONS %>% 
+  filter(Timeperiod == "2015 - 17") %>% 
+  filter(AreaType == "County & UA") %>% 
+  group_by(AreaType, Sex, Age, Timeperiod) %>% 
+  arrange(Value) %>% 
+  mutate(Rank =  rank(Value, ties.method = "first")) %>%
+  ungroup() %>% 
+  filter(IndicatorName == "Life expectancy at 65") %>% 
+  mutate(Sex = paste0(Sex, " ", tolower(IndicatorName), " rank")) %>% 
+  select(AreaName, AreaCode, Sex, Rank) %>% 
+  spread(key = Sex, value = Rank)
+
+LE_at_65_UTLA_val <- LE_ONS %>% 
+  filter(Timeperiod == "2015 - 17") %>% 
+  filter(AreaType == "County & UA") %>% 
+  filter(IndicatorName == "Life expectancy at 65") %>% 
+  mutate(Sex = paste0(Sex, " ", tolower(IndicatorName))) %>% 
+  select(AreaName, AreaCode, Sex, Value) %>% 
+  spread(key = Sex, value = Value)
+
+LE_at_65_UTLA_lci <- LE_ONS %>% 
+  filter(Timeperiod == "2015 - 17") %>% 
+  filter(AreaType == "County & UA") %>% 
+  filter(IndicatorName == "Life expectancy at 65") %>% 
+  mutate(Sex = paste0(Sex, " ", tolower(IndicatorName), " lci")) %>% 
+  select(AreaName, AreaCode, Sex, LowerCI95.0limit) %>% 
+  spread(key = Sex, value = LowerCI95.0limit)
+
+LE_at_65_UTLA_uci <- LE_ONS %>% 
+  filter(Timeperiod == "2015 - 17") %>% 
+  filter(AreaType == "County & UA") %>% 
+  filter(IndicatorName == "Life expectancy at 65") %>% 
+  mutate(Sex = paste0(Sex, " ", tolower(IndicatorName), " uci")) %>% 
+  select(AreaName, AreaCode, Sex, UpperCI95.0limit) %>% 
+  spread(key = Sex, value = UpperCI95.0limit)
+
+LE_at_65_UTLA <- LE_at_65_UTLA_val %>% 
+  left_join(LE_at_65_UTLA_lci, by = c("AreaCode", "AreaName")) %>% 
+  left_join(LE_at_65_UTLA_uci, by = c("AreaCode", "AreaName")) %>%
+  left_join(LE_at_65_UTLA_rank, by = c("AreaCode", "AreaName")) %>% 
+  select(AreaName,AreaCode,`Female life expectancy at 65`,`Female life expectancy at 65 lci`,`Female life expectancy at 65 uci`,`Female life expectancy at 65 rank`, `Male life expectancy at 65`,`Male life expectancy at 65 lci`,`Male life expectancy at 65 uci`,`Male life expectancy at 65 rank`)
+
+rm(LE_at_65_UTLA_val, LE_at_65_UTLA_lci, LE_at_65_UTLA_uci, LE_at_65_UTLA_rank)
+
+LE_UTLA <- LE_at_birth_UTLA %>% 
+  left_join(LE_at_65_UTLA, by = c("AreaCode", "AreaName")) %>% 
+  left_join(Dep, by = c("AreaCode", "AreaName"))
+
+rm(LE_at_birth_UTLA, LE_at_65_UTLA)
+
+# Districts ##
+
+LE_at_birth_LTLA_rank <- LE_ONS %>% 
   filter(Timeperiod == "2015 - 17") %>% 
   filter(AreaType == "District & UA") %>% 
-  left_join(Dep, by = c("AreaCode", "AreaName")) %>% 
-  unique() %>% 
   group_by(AreaType, Sex, Age, Timeperiod) %>% 
   arrange(Value) %>% 
-  mutate(Rank =  rank(Value, ties.method = "first"))
+  mutate(Rank =  rank(Value, ties.method = "first")) %>%
+  ungroup() %>% 
+  filter(IndicatorName == "Life expectancy at birth") %>% 
+  mutate(Sex = paste0(Sex, " ", tolower(IndicatorName), " rank")) %>% 
+  select(AreaName, AreaCode, Sex, Rank) %>% 
+  spread(key = Sex, value = Rank)
 
-Dep_wards <- fingertips_data(91872, AreaTypeID = 8) %>% 
-  filter(AreaType == "Ward")
+LE_at_birth_LTLA_val <- LE_ONS %>% 
+  filter(Timeperiod == "2015 - 17") %>% 
+  filter(AreaType == "District & UA") %>% 
+  filter(IndicatorName == "Life expectancy at birth") %>% 
+  mutate(Sex = paste0(Sex, " ", tolower(IndicatorName))) %>% 
+  select(AreaName, AreaCode, Sex, Value) %>% 
+  spread(key = Sex, value = Value)
+
+LE_at_birth_LTLA_lci <- LE_ONS %>% 
+  filter(Timeperiod == "2015 - 17") %>% 
+  filter(AreaType == "District & UA") %>% 
+  filter(IndicatorName == "Life expectancy at birth") %>% 
+  mutate(Sex = paste0(Sex, " ", tolower(IndicatorName), " lci")) %>% 
+  select(AreaName, AreaCode, Sex, LowerCI95.0limit) %>% 
+  spread(key = Sex, value = LowerCI95.0limit)
+
+LE_at_birth_LTLA_uci <- LE_ONS %>% 
+  filter(Timeperiod == "2015 - 17") %>% 
+  filter(AreaType == "District & UA") %>% 
+  filter(IndicatorName == "Life expectancy at birth") %>% 
+  mutate(Sex = paste0(Sex, " ", tolower(IndicatorName), " uci")) %>% 
+  select(AreaName, AreaCode, Sex, UpperCI95.0limit) %>% 
+  spread(key = Sex, value = UpperCI95.0limit)
+
+LE_at_birth_LTLA <- LE_at_birth_LTLA_val %>% 
+  left_join(LE_at_birth_LTLA_lci, by = c("AreaCode", "AreaName")) %>% 
+  left_join(LE_at_birth_LTLA_uci, by = c("AreaCode", "AreaName")) %>%
+  left_join(LE_at_birth_LTLA_rank, by = c("AreaCode", "AreaName")) %>% 
+  select(AreaName,AreaCode,`Female life expectancy at birth`,`Female life expectancy at birth lci`,`Female life expectancy at birth uci`,`Female life expectancy at birth rank`, `Male life expectancy at birth`,`Male life expectancy at birth lci`,`Male life expectancy at birth uci`,`Male life expectancy at birth rank`)
+
+rm(LE_at_birth_LTLA_val, LE_at_birth_LTLA_lci, LE_at_birth_LTLA_uci, LE_at_birth_LTLA_rank)
+
+LE_at_65_LTLA_rank <- LE_ONS %>% 
+  filter(Timeperiod == "2015 - 17") %>% 
+  filter(AreaType == "District & UA") %>% 
+  group_by(AreaType, Sex, Age, Timeperiod) %>% 
+  arrange(Value) %>% 
+  mutate(Rank =  rank(Value, ties.method = "first")) %>%
+  ungroup() %>% 
+  filter(IndicatorName == "Life expectancy at 65") %>% 
+  mutate(Sex = paste0(Sex, " ", tolower(IndicatorName), " rank")) %>% 
+  select(AreaName, AreaCode, Sex, Rank) %>% 
+  spread(key = Sex, value = Rank)
+
+LE_at_65_LTLA_val <- LE_ONS %>% 
+  filter(Timeperiod == "2015 - 17") %>% 
+  filter(AreaType == "District & UA") %>% 
+  filter(IndicatorName == "Life expectancy at 65") %>% 
+  mutate(Sex = paste0(Sex, " ", tolower(IndicatorName))) %>% 
+  select(AreaName, AreaCode, Sex, Value) %>% 
+  spread(key = Sex, value = Value)
+
+LE_at_65_LTLA_lci <- LE_ONS %>% 
+  filter(Timeperiod == "2015 - 17") %>% 
+  filter(AreaType == "District & UA") %>% 
+  filter(IndicatorName == "Life expectancy at 65") %>% 
+  mutate(Sex = paste0(Sex, " ", tolower(IndicatorName), " lci")) %>% 
+  select(AreaName, AreaCode, Sex, LowerCI95.0limit) %>% 
+  spread(key = Sex, value = LowerCI95.0limit)
+
+LE_at_65_LTLA_uci <- LE_ONS %>% 
+  filter(Timeperiod == "2015 - 17") %>% 
+  filter(AreaType == "District & UA") %>% 
+  filter(IndicatorName == "Life expectancy at 65") %>% 
+  mutate(Sex = paste0(Sex, " ", tolower(IndicatorName), " uci")) %>% 
+  select(AreaName, AreaCode, Sex, UpperCI95.0limit) %>% 
+  spread(key = Sex, value = UpperCI95.0limit)
+
+LE_at_65_LTLA <- LE_at_65_LTLA_val %>% 
+  left_join(LE_at_65_LTLA_lci, by = c("AreaCode", "AreaName")) %>% 
+  left_join(LE_at_65_LTLA_uci, by = c("AreaCode", "AreaName")) %>%
+  left_join(LE_at_65_LTLA_rank, by = c("AreaCode", "AreaName")) %>% 
+  select(AreaName,AreaCode,`Female life expectancy at 65`,`Female life expectancy at 65 lci`,`Female life expectancy at 65 uci`,`Female life expectancy at 65 rank`, `Male life expectancy at 65`,`Male life expectancy at 65 lci`,`Male life expectancy at 65 uci`,`Male life expectancy at 65 rank`)
+
+rm(LE_at_65_LTLA_val, LE_at_65_LTLA_lci, LE_at_65_LTLA_uci, LE_at_65_LTLA_rank)
+
+LE_LTLA <- LE_at_birth_LTLA %>% 
+  left_join(LE_at_65_LTLA, by = c("AreaCode", "AreaName")) %>% 
+  left_join(Dep, by = c("AreaCode", "AreaName"))
+
+rm(LE_at_birth_LTLA, LE_at_65_LTLA)
+
+# Dep_wards <- fingertips_data(91872, AreaTypeID = 8) %>% 
+#   filter(AreaType == "Ward")
 
 Selected_LE_ONS_ts <- LE_ONS %>% 
   group_by(AreaType, Sex, Age, Timeperiod) %>% 
@@ -279,14 +456,52 @@ Selected_LE_ONS_ts <- LE_ONS %>%
 HLE_at_birth <- fingertips_data(90362, AreaTypeID = c(101,102)) %>% 
   select(IndicatorName, AreaCode, AreaName,AreaType,Sex,Age,Timeperiod,Value,LowerCI95.0limit,UpperCI95.0limit)
 
-HLE_ONS_1517_UTLA <- HLE_at_birth %>% 
+HLE_at_birth_UTLA_rank <- HLE_at_birth %>% 
   filter(Timeperiod == "2015 - 17") %>% 
   filter(AreaType == "County & UA") %>% 
-  left_join(Dep, by = c("AreaCode", "AreaName")) %>% 
-  unique() %>% 
   group_by(AreaType, Sex, Age, Timeperiod) %>% 
   arrange(Value) %>% 
-  mutate(Rank =  rank(Value, ties.method = "first"))
+  mutate(Rank =  rank(Value, ties.method = "first")) %>%
+  ungroup() %>% 
+  filter(IndicatorName == "Healthy life expectancy at birth") %>% 
+  mutate(Sex = paste0(Sex, " ", tolower(IndicatorName), " rank")) %>% 
+  select(AreaName, AreaCode, Sex, Rank) %>% 
+  spread(key = Sex, value = Rank)
+
+HLE_at_birth_UTLA_val <- HLE_at_birth %>% 
+  filter(Timeperiod == "2015 - 17") %>% 
+  filter(AreaType == "County & UA") %>% 
+  filter(IndicatorName == "Healthy life expectancy at birth") %>% 
+  mutate(Sex = paste0(Sex, " ", tolower(IndicatorName))) %>% 
+  select(AreaName, AreaCode, Sex, Value) %>% 
+  spread(key = Sex, value = Value)
+
+HLE_at_birth_UTLA_lci <- HLE_at_birth %>% 
+  filter(Timeperiod == "2015 - 17") %>% 
+  filter(AreaType == "County & UA") %>% 
+  filter(IndicatorName == "Healthy life expectancy at birth") %>% 
+  mutate(Sex = paste0(Sex, " ", tolower(IndicatorName), " lci")) %>% 
+  select(AreaName, AreaCode, Sex, LowerCI95.0limit) %>% 
+  spread(key = Sex, value = LowerCI95.0limit)
+
+HLE_at_birth_UTLA_uci <- HLE_at_birth %>% 
+  filter(Timeperiod == "2015 - 17") %>% 
+  filter(AreaType == "County & UA") %>% 
+  filter(IndicatorName == "Healthy life expectancy at birth") %>% 
+  mutate(Sex = paste0(Sex, " ", tolower(IndicatorName), " uci")) %>% 
+  select(AreaName, AreaCode, Sex, UpperCI95.0limit) %>% 
+  spread(key = Sex, value = UpperCI95.0limit)
+
+HLE_at_birth_UTLA <- HLE_at_birth_UTLA_val %>% 
+  left_join(HLE_at_birth_UTLA_lci, by = c("AreaCode", "AreaName")) %>% 
+  left_join(HLE_at_birth_UTLA_uci, by = c("AreaCode", "AreaName")) %>%
+  left_join(HLE_at_birth_UTLA_rank, by = c("AreaCode", "AreaName")) %>% 
+  select(AreaName,AreaCode,`Female healthy life expectancy at birth`,`Female healthy life expectancy at birth lci`,`Female healthy life expectancy at birth uci`,`Female healthy life expectancy at birth rank`, `Male healthy life expectancy at birth`,`Male healthy life expectancy at birth lci`,`Male healthy life expectancy at birth uci`,`Male healthy life expectancy at birth rank`)
+
+rm(HLE_at_birth_UTLA_val, HLE_at_birth_UTLA_lci, HLE_at_birth_UTLA_uci, HLE_at_birth_UTLA_rank)
+
+HLE_at_birth_UTLA <- HLE_at_birth_UTLA %>% 
+  left_join(Dep, by = c("AreaCode", "AreaName"))
 
 selected_HLE_ONS_UTLA_ts <- HLE_at_birth %>% 
   group_by(AreaType, Sex, Age, Timeperiod) %>% 
@@ -307,10 +522,101 @@ selected_HLE_ONS_UTLA_ts <- HLE_at_birth %>%
 Slope_inequalities <- fingertips_data(92901, AreaTypeID = c(101,102)) %>% 
   bind_rows(fingertips_data(93190, AreaTypeID = c(101, 102))) %>% 
   filter(Timeperiod %in% c("2010 - 12", "2011 - 13", "2012 - 14", "2013 - 15", "2014 - 16", "2015 - 17")) %>%   
-  select(IndicatorName, AreaCode, AreaName,AreaType,Sex,Age,Timeperiod,Value,LowerCI95.0limit,UpperCI95.0limit) %>% 
+  select(IndicatorName, AreaCode, AreaName,AreaType,Sex,Age,Timeperiod,Value,LowerCI95.0limit,UpperCI95.0limit) 
+
+Slope_inequalities_at_birth_UTLA_rank <- Slope_inequalities %>% 
+  filter(Timeperiod == "2015 - 17") %>% 
+  filter(AreaType == "County & UA") %>% 
   group_by(AreaType, Sex, Age, Timeperiod) %>% 
   arrange(Value) %>% 
-  mutate(Rank =  rank(Value, ties.method = "first"))
+  mutate(Rank =  rank(Value, ties.method = "first")) %>%
+  ungroup() %>% 
+  filter(IndicatorName == "Inequality in life expectancy at birth") %>% 
+  mutate(Sex = paste0(Sex, " ", tolower(IndicatorName), " rank")) %>% 
+  select(AreaName, AreaCode, Sex, Rank) %>% 
+  spread(key = Sex, value = Rank)
+
+Slope_inequalities_at_birth_UTLA_val <- Slope_inequalities %>% 
+  filter(Timeperiod == "2015 - 17") %>% 
+  filter(AreaType == "County & UA") %>% 
+  filter(IndicatorName == "Inequality in life expectancy at birth") %>% 
+  mutate(Sex = paste0(Sex, " ", tolower(IndicatorName))) %>% 
+  select(AreaName, AreaCode, Sex, Value) %>% 
+  spread(key = Sex, value = Value)
+
+Slope_inequalities_at_birth_UTLA_lci <- Slope_inequalities %>% 
+  filter(Timeperiod == "2015 - 17") %>% 
+  filter(AreaType == "County & UA") %>% 
+  filter(IndicatorName == "Inequality in life expectancy at birth") %>% 
+  mutate(Sex = paste0(Sex, " ", tolower(IndicatorName), " lci")) %>% 
+  select(AreaName, AreaCode, Sex, LowerCI95.0limit) %>% 
+  spread(key = Sex, value = LowerCI95.0limit)
+
+Slope_inequalities_at_birth_UTLA_uci <- Slope_inequalities %>% 
+  filter(Timeperiod == "2015 - 17") %>% 
+  filter(AreaType == "County & UA") %>% 
+  filter(IndicatorName == "Inequality in life expectancy at birth") %>% 
+  mutate(Sex = paste0(Sex, " ", tolower(IndicatorName), " uci")) %>% 
+  select(AreaName, AreaCode, Sex, UpperCI95.0limit) %>% 
+  spread(key = Sex, value = UpperCI95.0limit)
+
+Slope_inequalities_at_birth_UTLA <- Slope_inequalities_at_birth_UTLA_val %>% 
+  left_join(Slope_inequalities_at_birth_UTLA_lci, by = c("AreaCode", "AreaName")) %>% 
+  left_join(Slope_inequalities_at_birth_UTLA_uci, by = c("AreaCode", "AreaName")) %>%
+  left_join(Slope_inequalities_at_birth_UTLA_rank, by = c("AreaCode", "AreaName")) %>% 
+  select(AreaName,AreaCode,`Female inequality in life expectancy at birth`,`Female inequality in life expectancy at birth lci`,`Female inequality in life expectancy at birth uci`,`Female inequality in life expectancy at birth rank`, `Male inequality in life expectancy at birth`,`Male inequality in life expectancy at birth lci`,`Male inequality in life expectancy at birth uci`,`Male inequality in life expectancy at birth rank`)
+
+rm(Slope_inequalities_at_birth_UTLA_val, Slope_inequalities_at_birth_UTLA_lci, Slope_inequalities_at_birth_UTLA_uci, Slope_inequalities_at_birth_UTLA_rank)
+
+Slope_inequalities_at_65_UTLA_rank <- Slope_inequalities %>% 
+  filter(Timeperiod == "2015 - 17") %>% 
+  filter(AreaType == "County & UA") %>% 
+  group_by(AreaType, Sex, Age, Timeperiod) %>% 
+  arrange(Value) %>% 
+  mutate(Rank =  rank(Value, ties.method = "first")) %>%
+  ungroup() %>% 
+  filter(IndicatorName == "Inequality in life expectancy at 65") %>% 
+  mutate(Sex = paste0(Sex, " ", tolower(IndicatorName), " rank")) %>% 
+  select(AreaName, AreaCode, Sex, Rank) %>% 
+  spread(key = Sex, value = Rank)
+
+Slope_inequalities_at_65_UTLA_val <- Slope_inequalities %>% 
+  filter(Timeperiod == "2015 - 17") %>% 
+  filter(AreaType == "County & UA") %>% 
+  filter(IndicatorName == "Inequality in life expectancy at 65") %>% 
+  mutate(Sex = paste0(Sex, " ", tolower(IndicatorName))) %>% 
+  select(AreaName, AreaCode, Sex, Value) %>% 
+  spread(key = Sex, value = Value)
+
+Slope_inequalities_at_65_UTLA_lci <- Slope_inequalities %>% 
+  filter(Timeperiod == "2015 - 17") %>% 
+  filter(AreaType == "County & UA") %>% 
+  filter(IndicatorName == "Inequality in life expectancy at 65") %>% 
+  mutate(Sex = paste0(Sex, " ", tolower(IndicatorName), " lci")) %>% 
+  select(AreaName, AreaCode, Sex, LowerCI95.0limit) %>% 
+  spread(key = Sex, value = LowerCI95.0limit)
+
+Slope_inequalities_at_65_UTLA_uci <- Slope_inequalities %>% 
+  filter(Timeperiod == "2015 - 17") %>% 
+  filter(AreaType == "County & UA") %>% 
+  filter(IndicatorName == "Inequality in life expectancy at 65") %>% 
+  mutate(Sex = paste0(Sex, " ", tolower(IndicatorName), " uci")) %>% 
+  select(AreaName, AreaCode, Sex, UpperCI95.0limit) %>% 
+  spread(key = Sex, value = UpperCI95.0limit)
+
+Slope_inequalities_at_65_UTLA <- Slope_inequalities_at_65_UTLA_val %>% 
+  left_join(Slope_inequalities_at_65_UTLA_lci, by = c("AreaCode", "AreaName")) %>% 
+  left_join(Slope_inequalities_at_65_UTLA_uci, by = c("AreaCode", "AreaName")) %>%
+  left_join(Slope_inequalities_at_65_UTLA_rank, by = c("AreaCode", "AreaName")) %>% 
+  select(AreaName,AreaCode,`Female inequality in life expectancy at 65`,`Female inequality in life expectancy at 65 lci`,`Female inequality in life expectancy at 65 uci`,`Female inequality in life expectancy at 65 rank`, `Male inequality in life expectancy at 65`,`Male inequality in life expectancy at 65 lci`,`Male inequality in life expectancy at 65 uci`,`Male inequality in life expectancy at 65 rank`)
+
+rm(Slope_inequalities_at_65_UTLA_val, Slope_inequalities_at_65_UTLA_lci, Slope_inequalities_at_65_UTLA_uci, Slope_inequalities_at_65_UTLA_rank)
+
+Slope_inequalities_UTLA <- Slope_inequalities_at_birth_UTLA %>% 
+  left_join(Slope_inequalities_at_65_UTLA, by = c("AreaCode", "AreaName")) %>% 
+  left_join(Dep, by = c("AreaCode", "AreaName"))
+
+rm(Slope_inequalities_at_birth_UTLA, Slope_inequalities_at_65_UTLA)
 
 Selected_Slope_inequalities_ts <- Slope_inequalities %>% 
   filter(AreaName %in% Areas_to_include)
@@ -380,7 +686,7 @@ setColumnWidth(sheet, colIndex = 1, colWidth = max(nchar(Area_population_df$Area
 
 setCellValue(cells[[1,2]], "Type")
 setCellStyle(cells[[1,2]], cs_left)
-addDataFrame(unique(Area_population_df$Data_type), sheet, 
+addDataFrame(unique(Area_population_df$Source), sheet, 
              startRow = 2, 
              startColumn = 2, 
              col.names = FALSE,
@@ -415,16 +721,17 @@ addDataFrame(unique(Districts_UA_selected$Area_Name), sheet,
 setColumnWidth(sheet, colIndex = 6, colWidth = max(nchar(Districts_UA_selected$Area_Name)))
 
 createRange("Area_list", cells[[2,1]], cells[[length(unique(Area_population_df$Area_Name))+1,1]])
+createRange("Source_list", cells[[2,2]], cells[[length(unique(Area_population_df$Source))+1,2]])
 createRange("Districts_UA_selected", cells[[2,5]], cells[[length(unique(Districts_UA_selected$Area_Name))+1,5]])
 createRange("Counties_UA_selected", cells[[2,6]], cells[[length(unique(Counties_UA_selected$Area_Name))+1,6]])
 
 wb$setActiveSheet(0L)
-wb$setSheetHidden(18L, 1L) # This assumes List is sheet number 18.
+wb$setSheetHidden(17L, 1L) # This assumes List is sheet number 17.
 
 removeSheet(wb, sheetName = "Raw Data")
 sheet <- createSheet(wb, "Raw Data")
 rows <- createRow(sheet, rowIndex = 1:nrow(Area_population_df))
-cells <- createCell(rows, colIndex = 1:10)
+cells <- createCell(rows, colIndex = 1:11)
 
 setCellValue(cells[[1,1]], "Area_name")
 setCellStyle(cells[[1,1]], cs_left)
@@ -444,8 +751,10 @@ setCellValue(cells[[1,8]], "Population")
 setCellStyle(cells[[1,8]], cs_left)
 setCellValue(cells[[1,9]], "Data_type")
 setCellStyle(cells[[1,9]], cs_left)
-setCellValue(cells[[1,10]], "All_age_population")
+setCellValue(cells[[1,10]], "Source")
 setCellStyle(cells[[1,10]], cs_left)
+setCellValue(cells[[1,11]], "All_age_population")
+setCellStyle(cells[[1,11]], cs_left)
 
 
 addDataFrame(as.data.frame(Area_population_df), sheet, 
@@ -455,11 +764,11 @@ addDataFrame(as.data.frame(Area_population_df), sheet,
              row.names = FALSE)
 
 # width of collumn
-autoSizeColumn(sheet, colIndex = 1:10)
+autoSizeColumn(sheet, colIndex = 1:11)
 
-wb$setSheetHidden(18L, 1L) # This assumes Raw Data is sheet number 17 (which it should be now, as index starts at 0)
+wb$setSheetHidden(17L, 1L) # This assumes Raw Data is sheet number 17 (which it should be now, as index starts at 0)
 
-rm(Area_population_df, Area_population_broad_combined, Area_population_broad_sex)
+rm(Area_population_df)
 
 removeSheet(wb, sheetName = "OADR Data")
 sheet <- createSheet(wb, "OADR Data")
@@ -493,7 +802,7 @@ addDataFrame(as.data.frame(OADR), sheet,
 
 rm(OADR)
 
-wb$setSheetHidden(18L, 1L) # This assumes OADR Data is sheet number 10 (which it should be now, as index starts at 0)
+wb$setSheetHidden(17L, 1L) # This assumes OADR Data is sheet number 10 (which it should be now, as index starts at 0)
 
 # width of collumn
 autoSizeColumn(sheet, colIndex = 1:9)
@@ -528,154 +837,336 @@ addDataFrame(as.data.frame(Older_age_broad_projections), sheet,
 
 rm(Older_age_broad_projections)
 
-wb$setSheetHidden(18L, 1L) # This assumes OADR Data is sheet number 10 (which it should be now, as index starts at 0)
+wb$setSheetHidden(17L, 1L) # This assumes OADR Data is sheet number 10 (which it should be now, as index starts at 0)
 
 # width of collumn
 autoSizeColumn(sheet, colIndex = 1:8)
 
+#start here add the wider ons sheets ####
 removeSheet(wb, sheetName = "ONS LE data")
 sheet <- createSheet(wb, "ONS LE data")
-rows <- createRow(sheet, rowIndex = 1:max(nrow(LE_ONS_1517_LTLA), nrow(LE_ONS_1517_UTLA),nrow(Selected_LE_ONS_ts),nrow(HLE_ONS_1517_UTLA), nrow(selected_HLE_ONS_UTLA_ts),nrow(Selected_Slope_inequalities_ts)))
-cells <- createCell(rows, colIndex = 1:52)
+rows <- createRow(sheet, rowIndex = 1:max(nrow(LE_LTLA), nrow(LE_UTLA),nrow(HLE_at_birth_UTLA),nrow(Selected_Slope_inequalities_ts)))
+cells <- createCell(rows, colIndex = 1:95)
 
-setCellValue(cells[[1,1]], "Indicator_name")
+setCellValue(cells[[1,1]], "Area_Name")
 setCellStyle(cells[[1,1]], cs_left)
 setCellValue(cells[[1,2]], "Area_Code")
 setCellStyle(cells[[1,2]], cs_left)
-setCellValue(cells[[1,3]], "Area_Name")
+setCellValue(cells[[1,3]], "Female_LE_at_birth")
 setCellStyle(cells[[1,3]], cs_left)
-setCellValue(cells[[1,4]], "Area_Type")
+setCellValue(cells[[1,4]], "Female_LE_at_birth_LCI")
 setCellStyle(cells[[1,4]], cs_left)
-setCellValue(cells[[1,5]], "Sex")
+setCellValue(cells[[1,5]], "Female_LE_at_birth_UCI")
 setCellStyle(cells[[1,5]], cs_left)
-setCellValue(cells[[1,6]], "Age")
+setCellValue(cells[[1,6]], "Female_LE_at_birth_rank")
 setCellStyle(cells[[1,6]], cs_left)
-setCellValue(cells[[1,7]], "Year")
+setCellValue(cells[[1,7]], "Male_LE_at_birth")
 setCellStyle(cells[[1,7]], cs_left)
-setCellValue(cells[[1,8]], "Life_expectancy")
+setCellValue(cells[[1,8]], "Male_LE_at_birth_LCI")
 setCellStyle(cells[[1,8]], cs_left)
-setCellValue(cells[[1,9]], "Life_expectancy_LCI")
+setCellValue(cells[[1,9]], "Male_LE_at_birth_UCI")
 setCellStyle(cells[[1,9]], cs_left)
-setCellValue(cells[[1,10]], "Life_expectancy_UCI")
+setCellValue(cells[[1,10]], "Male_LE_at_birth_rank")
 setCellStyle(cells[[1,10]], cs_left)
-setCellValue(cells[[1,11]], "Deprivation_score")
+setCellValue(cells[[1,11]], "Female_LE_at_65")
 setCellStyle(cells[[1,11]], cs_left)
-setCellValue(cells[[1,12]], "Proportion_in_deprived_areas")
+setCellValue(cells[[1,12]], "Female_LE_at_65_LCI")
 setCellStyle(cells[[1,12]], cs_left)
-setCellValue(cells[[1,13]], "Proportion_in_deprived_areas_LCI")
+setCellValue(cells[[1,13]], "Female_LE_at_65_UCI")
 setCellStyle(cells[[1,13]], cs_left)
-setCellValue(cells[[1,14]], "Proportion_in_deprived_areas_UCI")
+setCellValue(cells[[1,14]], "Female_LE_at_65_rank")
 setCellStyle(cells[[1,14]], cs_left)
-setCellValue(cells[[1,15]], "N_in_deprived_areas")
+setCellValue(cells[[1,15]], "Male_LE_at_65")
 setCellStyle(cells[[1,15]], cs_left)
-setCellValue(cells[[1,16]], "Rank")
+setCellValue(cells[[1,16]], "Male_LE_at_65_LCI")
 setCellStyle(cells[[1,16]], cs_left)
+setCellValue(cells[[1,17]], "Male_LE_at_65_UCI")
+setCellStyle(cells[[1,17]], cs_left)
+setCellValue(cells[[1,18]], "Male_LE_at_65_rank")
+setCellStyle(cells[[1,18]], cs_left)
+setCellValue(cells[[1,19]], "Deprivation_score")
+setCellStyle(cells[[1,19]], cs_left)
+setCellValue(cells[[1,20]], "Proportion_in_deprived_areas")
+setCellStyle(cells[[1,20]], cs_left)
+setCellValue(cells[[1,21]], "Proportion_in_deprived_areas_LCI")
+setCellStyle(cells[[1,21]], cs_left)
+setCellValue(cells[[1,22]], "Proportion_in_deprived_areas_UCI")
+setCellStyle(cells[[1,22]], cs_left)
+setCellValue(cells[[1,23]], "N_in_deprived_areas")
+setCellStyle(cells[[1,23]], cs_left)
 
-addDataFrame(as.data.frame(LE_ONS_1517_UTLA), sheet, 
+addDataFrame(as.data.frame(LE_LTLA), sheet, 
              startRow = 2, 
              startColumn = 1, 
              col.names = FALSE,
              row.names = FALSE)
 
-rm(LE_ONS_1517_UTLA)
+rm(LE_LTLA)
 
-setCellValue(cells[[1,18]], "Indicator_name")
-setCellStyle(cells[[1,18]], cs_left)
-setCellValue(cells[[1,19]], "Area_Code")
-setCellStyle(cells[[1,19]], cs_left)
-setCellValue(cells[[1,20]], "Area_Name")
-setCellStyle(cells[[1,20]], cs_left)
-setCellValue(cells[[1,21]], "Area_Type")
-setCellStyle(cells[[1,21]], cs_left)
-setCellValue(cells[[1,22]], "Sex")
-setCellStyle(cells[[1,22]], cs_left)
-setCellValue(cells[[1,23]], "Age")
-setCellStyle(cells[[1,23]], cs_left)
-setCellValue(cells[[1,24]], "Year")
-setCellStyle(cells[[1,24]], cs_left)
-setCellValue(cells[[1,25]], "Life_expectancy")
+setCellValue(cells[[1,25]], "Area_Name")
 setCellStyle(cells[[1,25]], cs_left)
-setCellValue(cells[[1,26]], "Life_expectancy_LCI")
+setCellValue(cells[[1,26]], "Area_Code")
 setCellStyle(cells[[1,26]], cs_left)
-setCellValue(cells[[1,27]], "Life_expectancy_UCI")
+setCellValue(cells[[1,27]], "Female_LE_at_birth")
 setCellStyle(cells[[1,27]], cs_left)
-setCellValue(cells[[1,28]], "Rank")
+setCellValue(cells[[1,28]], "Female_LE_at_birth_LCI")
 setCellStyle(cells[[1,28]], cs_left)
-
-addDataFrame(as.data.frame(Selected_LE_ONS_ts), sheet, 
-             startRow = 2, 
-             startColumn = 18, 
-             col.names = FALSE,
-             row.names = FALSE)
-
-rm(Selected_LE_ONS_ts)
-
-setCellValue(cells[[1,30]], "Indicator_name")
+setCellValue(cells[[1,29]], "Female_LE_at_birth_UCI")
+setCellStyle(cells[[1,29]], cs_left)
+setCellValue(cells[[1,30]], "Female_LE_at_birth_rank")
 setCellStyle(cells[[1,30]], cs_left)
-setCellValue(cells[[1,31]], "Area_Code")
+setCellValue(cells[[1,31]], "Male_LE_at_birth")
 setCellStyle(cells[[1,31]], cs_left)
-setCellValue(cells[[1,32]], "Area_Name")
+setCellValue(cells[[1,32]], "Male_LE_at_birth_LCI")
 setCellStyle(cells[[1,32]], cs_left)
-setCellValue(cells[[1,33]], "Area_Type")
+setCellValue(cells[[1,33]], "Male_LE_at_birth_UCI")
 setCellStyle(cells[[1,33]], cs_left)
-setCellValue(cells[[1,34]], "Sex")
+setCellValue(cells[[1,34]], "Male_LE_at_birth_rank")
 setCellStyle(cells[[1,34]], cs_left)
-setCellValue(cells[[1,35]], "Age")
+setCellValue(cells[[1,35]], "Female_LE_at_65")
 setCellStyle(cells[[1,35]], cs_left)
-setCellValue(cells[[1,36]], "Year")
+setCellValue(cells[[1,36]], "Female_LE_at_65_LCI")
 setCellStyle(cells[[1,36]], cs_left)
-setCellValue(cells[[1,37]], "Healthy_Life_expectancy")
+setCellValue(cells[[1,37]], "Female_LE_at_65_UCI")
 setCellStyle(cells[[1,37]], cs_left)
-setCellValue(cells[[1,38]], "Healthy_Life_expectancy_LCI")
+setCellValue(cells[[1,38]], "Female_LE_at_65_rank")
 setCellStyle(cells[[1,38]], cs_left)
-setCellValue(cells[[1,39]], "Healthy_Life_expectancy_UCI")
+setCellValue(cells[[1,39]], "Male_LE_at_65")
 setCellStyle(cells[[1,39]], cs_left)
-setCellValue(cells[[1,40]], "Rank")
+setCellValue(cells[[1,40]], "Male_LE_at_65_LCI")
 setCellStyle(cells[[1,40]], cs_left)
-
-addDataFrame(as.data.frame(selected_HLE_ONS_UTLA_ts), sheet, 
-             startRow = 2, 
-             startColumn = 30, 
-             col.names = FALSE,
-             row.names = FALSE)
-
-rm(selected_HLE_ONS_UTLA_ts)
-
-setCellValue(cells[[1,42]], "Indicator_name")
+setCellValue(cells[[1,41]], "Male_LE_at_65_UCI")
+setCellStyle(cells[[1,41]], cs_left)
+setCellValue(cells[[1,42]], "Male_LE_at_65_rank")
 setCellStyle(cells[[1,42]], cs_left)
-setCellValue(cells[[1,43]], "Area_Code")
+setCellValue(cells[[1,43]], "Deprivation_score")
 setCellStyle(cells[[1,43]], cs_left)
-setCellValue(cells[[1,44]], "Area_Name")
+setCellValue(cells[[1,44]], "Proportion_in_deprived_areas")
 setCellStyle(cells[[1,44]], cs_left)
-setCellValue(cells[[1,45]], "Area_Type")
+setCellValue(cells[[1,45]], "Proportion_in_deprived_areas_LCI")
 setCellStyle(cells[[1,45]], cs_left)
-setCellValue(cells[[1,46]], "Sex")
+setCellValue(cells[[1,46]], "Proportion_in_deprived_areas_UCI")
 setCellStyle(cells[[1,46]], cs_left)
-setCellValue(cells[[1,47]], "Age")
+setCellValue(cells[[1,47]], "N_in_deprived_areas")
 setCellStyle(cells[[1,47]], cs_left)
-setCellValue(cells[[1,48]], "Year")
-setCellStyle(cells[[1,48]], cs_left)
-setCellValue(cells[[1,49]], "SII")
-setCellStyle(cells[[1,49]], cs_left)
-setCellValue(cells[[1,50]], "SII_LCI")
-setCellStyle(cells[[1,50]], cs_left)
-setCellValue(cells[[1,51]], "SII_UCI")
-setCellStyle(cells[[1,51]], cs_left)
-setCellValue(cells[[1,52]], "Rank")
-setCellStyle(cells[[1,52]], cs_left)
 
-addDataFrame(as.data.frame(Selected_Slope_inequalities_ts), sheet, 
-             startRow = 2, 
-             startColumn = 42, 
+addDataFrame(as.data.frame(LE_UTLA), sheet, 
+             startRow = 5, 
+             startColumn = 25, 
              col.names = FALSE,
              row.names = FALSE)
 
-rm(Selected_Slope_inequalities_ts)
+rm(LE_UTLA)
+setCellValue(cells[[1,49]], "Area_Name")
+setCellStyle(cells[[1,49]], cs_left)
+setCellValue(cells[[1,50]], "Area_Code")
+setCellStyle(cells[[1,50]], cs_left)
+setCellValue(cells[[1,51]], "Female_HLE_at_birth")
+setCellStyle(cells[[1,51]], cs_left)
+setCellValue(cells[[1,52]], "Female_HLE_at_birth_LCI")
+setCellStyle(cells[[1,52]], cs_left)
+setCellValue(cells[[1,53]], "Female_HLE_at_birth_UCI")
+setCellStyle(cells[[1,53]], cs_left)
+setCellValue(cells[[1,54]], "Female_HLE_at_birth_rank")
+setCellStyle(cells[[1,54]], cs_left)
+setCellValue(cells[[1,55]], "Male_HLE_at_birth")
+setCellStyle(cells[[1,55]], cs_left)
+setCellValue(cells[[1,56]], "Male_HLE_at_birth_LCI")
+setCellStyle(cells[[1,56]], cs_left)
+setCellValue(cells[[1,57]], "Male_HLE_at_birth_UCI")
+setCellStyle(cells[[1,57]], cs_left)
+setCellValue(cells[[1,58]], "Male_HLE_at_birth_rank")
+setCellStyle(cells[[1,58]], cs_left)
+setCellValue(cells[[1,59]], "Female_HLE_at_65")
+setCellStyle(cells[[1,59]], cs_left)
+setCellValue(cells[[1,60]], "Female_HLE_at_65_LCI")
+setCellStyle(cells[[1,60]], cs_left)
+setCellValue(cells[[1,61]], "Female_HLE_at_65_UCI")
+setCellStyle(cells[[1,61]], cs_left)
+setCellValue(cells[[1,62]], "Female_HLE_at_65_rank")
+setCellStyle(cells[[1,62]], cs_left)
+setCellValue(cells[[1,63]], "Male_HLE_at_65")
+setCellStyle(cells[[1,63]], cs_left)
+setCellValue(cells[[1,64]], "Male_HLE_at_65_LCI")
+setCellStyle(cells[[1,64]], cs_left)
+setCellValue(cells[[1,65]], "Male_HLE_at_65_UCI")
+setCellStyle(cells[[1,65]], cs_left)
+setCellValue(cells[[1,66]], "Male_HLE_at_65_rank")
+setCellStyle(cells[[1,66]], cs_left)
+setCellValue(cells[[1,67]], "Deprivation_score")
+setCellStyle(cells[[1,67]], cs_left)
+setCellValue(cells[[1,68]], "Proportion_in_deprived_areas")
+setCellStyle(cells[[1,68]], cs_left)
+setCellValue(cells[[1,69]], "Proportion_in_deprived_areas_LCI")
+setCellStyle(cells[[1,69]], cs_left)
+setCellValue(cells[[1,70]], "Proportion_in_deprived_areas_UCI")
+setCellStyle(cells[[1,70]], cs_left)
+setCellValue(cells[[1,71]], "N_in_deprived_areas")
+setCellStyle(cells[[1,71]], cs_left)
 
-wb$setSheetHidden(18L, 1L) # This assumes ONS LE Data is sheet number 10 (which it should be now, as index starts at 0)
+addDataFrame(as.data.frame(HLE_at_birth_UTLA), sheet, 
+             startRow = 2, 
+             startColumn = 49, 
+             col.names = FALSE,
+             row.names = FALSE)
+
+rm(HLE_at_birth_UTLA)
+
+setCellValue(cells[[1,73]], "Area_Name")
+setCellStyle(cells[[1,73]], cs_left)
+setCellValue(cells[[1,74]], "Area_Code")
+setCellStyle(cells[[1,74]], cs_left)
+setCellValue(cells[[1,75]], "Female_HLE_at_birth")
+setCellStyle(cells[[1,75]], cs_left)
+setCellValue(cells[[1,76]], "Female_HLE_at_birth_LCI")
+setCellStyle(cells[[1,76]], cs_left)
+setCellValue(cells[[1,77]], "Female_HLE_at_birth_UCI")
+setCellStyle(cells[[1,77]], cs_left)
+setCellValue(cells[[1,78]], "Female_HLE_at_birth_rank")
+setCellStyle(cells[[1,78]], cs_left)
+setCellValue(cells[[1,79]], "Male_HLE_at_birth")
+setCellStyle(cells[[1,79]], cs_left)
+setCellValue(cells[[1,80]], "Male_HLE_at_birth_LCI")
+setCellStyle(cells[[1,80]], cs_left)
+setCellValue(cells[[1,81]], "Male_HLE_at_birth_UCI")
+setCellStyle(cells[[1,81]], cs_left)
+setCellValue(cells[[1,82]], "Male_HLE_at_birth_rank")
+setCellStyle(cells[[1,82]], cs_left)
+setCellValue(cells[[1,83]], "Female_HLE_at_65")
+setCellStyle(cells[[1,83]], cs_left)
+setCellValue(cells[[1,84]], "Female_HLE_at_65_LCI")
+setCellStyle(cells[[1,84]], cs_left)
+setCellValue(cells[[1,85]], "Female_HLE_at_65_UCI")
+setCellStyle(cells[[1,85]], cs_left)
+setCellValue(cells[[1,86]], "Female_HLE_at_65_rank")
+setCellStyle(cells[[1,86]], cs_left)
+setCellValue(cells[[1,87]], "Male_HLE_at_65")
+setCellStyle(cells[[1,87]], cs_left)
+setCellValue(cells[[1,88]], "Male_HLE_at_65_LCI")
+setCellStyle(cells[[1,88]], cs_left)
+setCellValue(cells[[1,89]], "Male_HLE_at_65_UCI")
+setCellStyle(cells[[1,89]], cs_left)
+setCellValue(cells[[1,90]], "Male_HLE_at_65_rank")
+setCellStyle(cells[[1,90]], cs_left)
+setCellValue(cells[[1,91]], "Deprivation_score")
+setCellStyle(cells[[1,91]], cs_left)
+setCellValue(cells[[1,92]], "Proportion_in_deprived_areas")
+setCellStyle(cells[[1,92]], cs_left)
+setCellValue(cells[[1,93]], "Proportion_in_deprived_areas_LCI")
+setCellStyle(cells[[1,93]], cs_left)
+setCellValue(cells[[1,94]], "Proportion_in_deprived_areas_UCI")
+setCellStyle(cells[[1,94]], cs_left)
+setCellValue(cells[[1,95]], "N_in_deprived_areas")
+setCellStyle(cells[[1,95]], cs_left)
+
+addDataFrame(as.data.frame(Slope_inequalities_UTLA), sheet, 
+             startRow = 2, 
+             startColumn = 73, 
+             col.names = FALSE,
+             row.names = FALSE)
+
+rm(Slope_inequalities_UTLA)
+
+wb$setSheetHidden(17L, 1L) # This assumes ONS LE Data is sheet number 10 (which it should be now, as index starts at 0)
 
 # width of collumn
-autoSizeColumn(sheet, colIndex = 1:52)
+autoSizeColumn(sheet, colIndex = 1:95)
+
+removeSheet(wb, sheetName = "Selected LE data")
+sheet <- createSheet(wb, "Selected LE data")
+rows <- createRow(sheet, rowIndex = 1:max(nrow(Selected_LE_ONS_ts), nrow(selected_HLE_ONS_UTLA_ts), nrow(Selected_Slope_inequalities_ts)))
+cells <- createCell(rows, colIndex = 1:34)
+
+setCellValue(cells[[1,1]], "Indicator")
+setCellStyle(cells[[1,1]], cs_left)
+setCellValue(cells[[1,2]], "Area_Codee")
+setCellStyle(cells[[1,2]], cs_left)
+setCellValue(cells[[1,3]], "Area_Name")
+setCellStyle(cells[[1,3]], cs_left)
+setCellValue(cells[[1,4]], "AreaType")
+setCellStyle(cells[[1,4]], cs_left)
+setCellValue(cells[[1,5]], "Sex")
+setCellStyle(cells[[1,5]], cs_left)
+setCellValue(cells[[1,6]], "Age")
+setCellStyle(cells[[1,6]], cs_left)
+setCellValue(cells[[1,7]], "Time_Period")
+setCellStyle(cells[[1,7]], cs_left)
+setCellValue(cells[[1,8]], "Life Expectancy at birth")
+setCellStyle(cells[[1,8]], cs_left)
+setCellValue(cells[[1,8]], "Life Expectancy at birth LCI")
+setCellStyle(cells[[1,8]], cs_left)
+setCellValue(cells[[1,10]], "Life Expectancy at birth UCI")
+setCellStyle(cells[[1,10]], cs_left)
+setCellValue(cells[[1,11]], "Life Expectancy at birth rank")
+setCellStyle(cells[[1,11]], cs_left)
+
+addDataFrame(as.data.frame(Selected_LE_ONS_ts), sheet,
+             startRow = 2,
+             startColumn = 1,
+             col.names = FALSE,
+             row.names = FALSE)
+
+setCellValue(cells[[1,13]], "Indicator")
+setCellStyle(cells[[1,13]], cs_left)
+setCellValue(cells[[1,14]], "Area_Codee")
+setCellStyle(cells[[1,14]], cs_left)
+setCellValue(cells[[1,15]], "Area_Name")
+setCellStyle(cells[[1,15]], cs_left)
+setCellValue(cells[[1,16]], "AreaType")
+setCellStyle(cells[[1,16]], cs_left)
+setCellValue(cells[[1,17]], "Sex")
+setCellStyle(cells[[1,17]], cs_left)
+setCellValue(cells[[1,18]], "Age")
+setCellStyle(cells[[1,18]], cs_left)
+setCellValue(cells[[1,19]], "Time_Period")
+setCellStyle(cells[[1,19]], cs_left)
+setCellValue(cells[[1,20]], "Healthy Life Expectancy at birth")
+setCellStyle(cells[[1,20]], cs_left)
+setCellValue(cells[[1,21]], "Healthy Life Expectancy at birth LCI")
+setCellStyle(cells[[1,21]], cs_left)
+setCellValue(cells[[1,22]], "Healthy Life Expectancy at birth UCI")
+setCellStyle(cells[[1,22]], cs_left)
+setCellValue(cells[[1,23]], "Healthy Life Expectancy at birth rank")
+setCellStyle(cells[[1,23]], cs_left)
+
+addDataFrame(as.data.frame(selected_HLE_ONS_UTLA_ts), sheet,
+             startRow = 2,
+             startColumn = 13,
+             col.names = FALSE,
+             row.names = FALSE)
+
+
+setCellValue(cells[[1,25]], "Indicator")
+setCellStyle(cells[[1,25]], cs_left)
+setCellValue(cells[[1,26]], "Area_Codee")
+setCellStyle(cells[[1,26]], cs_left)
+setCellValue(cells[[1,27]], "Area_Name")
+setCellStyle(cells[[1,27]], cs_left)
+setCellValue(cells[[1,28]], "AreaType")
+setCellStyle(cells[[1,28]], cs_left)
+setCellValue(cells[[1,29]], "Sex")
+setCellStyle(cells[[1,29]], cs_left)
+setCellValue(cells[[1,30]], "Age")
+setCellStyle(cells[[1,30]], cs_left)
+setCellValue(cells[[1,31]], "Time_Period")
+setCellStyle(cells[[1,31]], cs_left)
+setCellValue(cells[[1,32]], "Slope inequality in Life Expectancy at birth")
+setCellStyle(cells[[1,32]], cs_left)
+setCellValue(cells[[1,33]], "Slope inequality in Life Expectancy at birth LCI")
+setCellStyle(cells[[1,33]], cs_left)
+setCellValue(cells[[1,34]], "Slope inequality in Life Expectancy at birth UCI")
+setCellStyle(cells[[1,34]], cs_left)
+
+addDataFrame(as.data.frame(Selected_Slope_inequalities_ts), sheet,
+             startRow = 2,
+             startColumn = 25,
+             col.names = FALSE,
+             row.names = FALSE)
+
+wb$setSheetHidden(17L, 1L) # This assumes Raw Data is sheet number 17 (which it should be now, as index starts at 0)
+
+autoSizeColumn(sheet, colIndex = 1:34)
+
 
 # removeSheet(wb, sheetName = "GBD LE data")
 # sheet <- createSheet(wb, "GBD LE data")
@@ -705,7 +1196,7 @@ autoSizeColumn(sheet, colIndex = 1:52)
 #              col.names = FALSE,
 #              row.names = FALSE)
 # 
-# wb$setSheetHidden(18L, 1L) # This assumes Raw Data is sheet number 17 (which it should be now, as index starts at 0)
+# wb$setSheetHidden(17L, 1L) # This assumes Raw Data is sheet number 17 (which it should be now, as index starts at 0)
 
 # autoSizeColumn(sheet, colIndex = 1:8)
 
@@ -740,7 +1231,7 @@ addDataFrame(as.data.frame(selected_areas_gbd_LE_tables), sheet,
 # width of collumn
 autoSizeColumn(sheet, colIndex = 1:8)
 
-wb$setSheetHidden(18L, 1L) # This assumes Raw Data is sheet number 17 (which it should be now, as index starts at 0)
+wb$setSheetHidden(17L, 1L) # This assumes Raw Data is sheet number 17 (which it should be now, as index starts at 0)
 
 saveWorkbook(wb, file = "./Projecting-Health/STP Profile 2019 Update v1.xlsx")
 

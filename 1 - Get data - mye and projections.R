@@ -492,9 +492,11 @@ Areas_estimates_file <- ONS_MYE_quinary %>%
          Area_Name = Area_name)
 
 Area_population_df <- Areas_estimates_file %>% 
-  bind_rows(Areas_projections_file)
+  bind_rows(Areas_projections_file) %>% 
+  mutate(Source = "Office for National Statistics")
 
 rm(df, i, ONS_mye_SYOA, ONS_mye_ccg_SYOA, ONS_projections_SYOA, ONS_ccg_projections_df, ONS_MYE_10_year, ONS_MYE_broad, ONS_MYE_quinary, ONS_projection_1941_10_year, ONS_projection_1941_broad, ONS_projection_1941_quinary)
+
 
 write.csv(Area_population_df, file = "./Projecting-Health/Area_population_df.csv", row.names = FALSE)
 
