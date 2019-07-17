@@ -621,6 +621,11 @@ rm(Slope_inequalities_at_birth_UTLA, Slope_inequalities_at_65_UTLA)
 Selected_Slope_inequalities_ts <- Slope_inequalities %>% 
   filter(AreaName %in% Areas_to_include)
 
+
+cor.test(LE_LTLA$`Female life expectancy at birth`, LE_LTLA$Deprivation_score)
+cor.test(LE_LTLA$`Male life expectancy at birth`, LE_LTLA$Deprivation_score)
+
+
 # ONS highlight those areas where the life expectancy is lower than the state pension age of 65
 
 # Also do data frame for deprivation
@@ -673,7 +678,7 @@ cs_right_coloured <- CellStyle(wb) +
 removeSheet(wb, sheetName = "List")
 sheet <- createSheet(wb, "List")
 rows <- createRow(sheet, rowIndex = 1:max(length(unique(Area_population_df$Area_Name)), length(unique(Area_population_df$Data_type)), length(unique(Area_population_df$Year)), na.rm = TRUE))
-cells <- createCell(rows, colIndex = 1:6)
+cells <- createCell(rows, colIndex = 1:13)
 
 setCellValue(cells[[1,1]], "Area")
 setCellStyle(cells[[1,1]], cs_left)
@@ -725,8 +730,22 @@ createRange("Source_list", cells[[2,2]], cells[[length(unique(Area_population_df
 createRange("Districts_UA_selected", cells[[2,5]], cells[[length(unique(Districts_UA_selected$Area_Name))+1,5]])
 createRange("Counties_UA_selected", cells[[2,6]], cells[[length(unique(Counties_UA_selected$Area_Name))+1,6]])
 
+
+local_areas_ltla <- LE_LTLA %>% 
+  filter(AreaName %in% Areas_to_include) %>% 
+  select(AreaName, `Female life expectancy at birth`, `Male life expectancy at birth`, `Female life expectancy at 65`, `Male life expectancy at 65`, Deprivation_score) %>% 
+  filter(AreaName != "England")
+
+addDataFrame(local_areas_ltla, sheet, 
+             startRow = 1, 
+             startColumn = 8, 
+             col.names = FALSE,
+             row.names = FALSE)
+
+autoSizeColumn(sheet, colIndex = 1:13)
+
 wb$setActiveSheet(0L)
-wb$setSheetHidden(17L, 1L) # This assumes List is sheet number 17.
+wb$setSheetHidden(16L, 1L) # This assumes List is sheet number 17.
 
 removeSheet(wb, sheetName = "Raw Data")
 sheet <- createSheet(wb, "Raw Data")
@@ -766,7 +785,7 @@ addDataFrame(as.data.frame(Area_population_df), sheet,
 # width of collumn
 autoSizeColumn(sheet, colIndex = 1:11)
 
-wb$setSheetHidden(17L, 1L) # This assumes Raw Data is sheet number 17 (which it should be now, as index starts at 0)
+wb$setSheetHidden(16L, 1L) # This assumes Raw Data is sheet number 17 (which it should be now, as index starts at 0)
 
 rm(Area_population_df)
 
@@ -802,7 +821,7 @@ addDataFrame(as.data.frame(OADR), sheet,
 
 rm(OADR)
 
-wb$setSheetHidden(17L, 1L) # This assumes OADR Data is sheet number 10 (which it should be now, as index starts at 0)
+wb$setSheetHidden(16L, 1L) # This assumes OADR Data is sheet number 10 (which it should be now, as index starts at 0)
 
 # width of collumn
 autoSizeColumn(sheet, colIndex = 1:9)
@@ -837,7 +856,7 @@ addDataFrame(as.data.frame(Older_age_broad_projections), sheet,
 
 rm(Older_age_broad_projections)
 
-wb$setSheetHidden(17L, 1L) # This assumes OADR Data is sheet number 10 (which it should be now, as index starts at 0)
+wb$setSheetHidden(16L, 1L) # This assumes OADR Data is sheet number 10 (which it should be now, as index starts at 0)
 
 # width of collumn
 autoSizeColumn(sheet, colIndex = 1:8)
@@ -1067,7 +1086,7 @@ addDataFrame(as.data.frame(Slope_inequalities_UTLA), sheet,
 
 rm(Slope_inequalities_UTLA)
 
-wb$setSheetHidden(17L, 1L) # This assumes ONS LE Data is sheet number 10 (which it should be now, as index starts at 0)
+wb$setSheetHidden(16L, 1L) # This assumes ONS LE Data is sheet number 10 (which it should be now, as index starts at 0)
 
 # width of collumn
 autoSizeColumn(sheet, colIndex = 1:95)
@@ -1135,7 +1154,6 @@ addDataFrame(as.data.frame(selected_HLE_ONS_UTLA_ts), sheet,
              col.names = FALSE,
              row.names = FALSE)
 
-
 setCellValue(cells[[1,25]], "Indicator")
 setCellStyle(cells[[1,25]], cs_left)
 setCellValue(cells[[1,26]], "Area_Codee")
@@ -1163,7 +1181,7 @@ addDataFrame(as.data.frame(Selected_Slope_inequalities_ts), sheet,
              col.names = FALSE,
              row.names = FALSE)
 
-wb$setSheetHidden(17L, 1L) # This assumes Raw Data is sheet number 17 (which it should be now, as index starts at 0)
+wb$setSheetHidden(16L, 1L) # This assumes Raw Data is sheet number 17 (which it should be now, as index starts at 0)
 
 autoSizeColumn(sheet, colIndex = 1:34)
 
@@ -1196,7 +1214,7 @@ autoSizeColumn(sheet, colIndex = 1:34)
 #              col.names = FALSE,
 #              row.names = FALSE)
 # 
-# wb$setSheetHidden(17L, 1L) # This assumes Raw Data is sheet number 17 (which it should be now, as index starts at 0)
+# wb$setSheetHidden(16L, 1L) # This assumes Raw Data is sheet number 17 (which it should be now, as index starts at 0)
 
 # autoSizeColumn(sheet, colIndex = 1:8)
 
@@ -1231,7 +1249,7 @@ addDataFrame(as.data.frame(selected_areas_gbd_LE_tables), sheet,
 # width of collumn
 autoSizeColumn(sheet, colIndex = 1:8)
 
-wb$setSheetHidden(17L, 1L) # This assumes Raw Data is sheet number 17 (which it should be now, as index starts at 0)
+wb$setSheetHidden(16L, 1L) # This assumes Raw Data is sheet number 17 (which it should be now, as index starts at 0)
 
 saveWorkbook(wb, file = "./Projecting-Health/STP Profile 2019 Update v1.xlsx")
 

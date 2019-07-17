@@ -1,8 +1,7 @@
 
-
 # Use this r script to download local authority and ccg level population estimates and projections from ONS for chosen areas.
 
-# We need to create a script that outputs the 'RAW POP Data for the Poppi and PANSI spreadsheets
+# We need to create a script that outputs the spreadsheet files (csvs)
 
 # Notes
 # 1.  Long-term subnational population projections are an indication of the future trends in population by age and sex over the next 25 years. They are trend-based projections, which means assumptions for future levels of births, deaths and migration are based on observed levels mainly over the previous 5 years. They show what the population will be if recent trends continue.
@@ -154,7 +153,8 @@ ONS_projection_1941_quinary <- ONS_projections_SYOA %>%
   mutate(Age = as.numeric(gsub(" and over", "", AGE_GROUP))) %>% 
   mutate(`Age group` = ifelse(Age <= 4, "0-4 years", ifelse(Age <= 9, "5-9 years", ifelse(Age <= 14, "10-14 years", ifelse(Age <= 19, "15-19 years", ifelse(Age <= 24, "20-24 years", ifelse(Age <= 29, "25-29 years",ifelse(Age <= 34, "30-34 years", ifelse(Age <= 39, "35-39 years",ifelse(Age <= 44, "40-44 years", ifelse(Age <= 49, "45-49 years",ifelse(Age <= 54, "50-54 years", ifelse(Age <= 59, "55-59 years",ifelse(Age <= 64, "60-64 years", ifelse(Age <= 69, "65-69 years",ifelse(Age <= 74, "70-74 years", ifelse(Age <= 79, "75-79 years",ifelse(Age <= 84, "80-84 years", ifelse(Age <= 89, "85-89 years", "90+ years"))))))))))))))))))) %>% 
   group_by(AREA_NAME, AREA_CODE, SEX, `Age group`) %>% 
-  summarise(`2019` = sum(`2019`, na.rm = TRUE),
+  summarise(`2018` = sum(`2018`, na.rm = TRUE),
+            `2019` = sum(`2019`, na.rm = TRUE),
             `2020` = sum(`2020`, na.rm = TRUE),
             `2021` = sum(`2021`, na.rm = TRUE),
             `2022` = sum(`2022`, na.rm = TRUE),
@@ -183,7 +183,7 @@ ONS_projection_1941_quinary <- ONS_projections_SYOA %>%
          Area_code = AREA_CODE,
          Sex = SEX) %>% 
   mutate(Sex = ifelse(Sex == "Females", "Female", ifelse(Sex == "Males", "Male", Sex))) %>% 
-  gather(Year, Population, `2019`:`2041`, factor_key = TRUE) %>% 
+  gather(Year, Population, `2018`:`2041`, factor_key = TRUE) %>% 
   mutate(Data_type = "Projected - ONS",
          Age_band_type = "5 years")
 
@@ -192,7 +192,8 @@ ONS_projection_1941_10_year <- ONS_projections_SYOA %>%
   mutate(Age = as.numeric(gsub(" and over", "", AGE_GROUP))) %>% 
   mutate(`Age group` = ifelse(Age <= 9, "0-9 years", ifelse(Age <= 19, "10-19 years", ifelse(Age <= 29, "20-29 years", ifelse(Age <= 39, "30-39 years", ifelse(Age <= 49, "40-49 years", ifelse(Age <= 59, "50-59 years",ifelse(Age <= 69, "60-69 years", ifelse(Age <= 79, "70-79 years",ifelse(Age <= 89, "80-89 years", "90+ years")))))))))) %>% 
   group_by(AREA_NAME, AREA_CODE, SEX, `Age group`) %>% 
-  summarise(`2019` = sum(`2019`, na.rm = TRUE),
+  summarise(`2018` = sum(`2018`, na.rm = TRUE),
+            `2019` = sum(`2019`, na.rm = TRUE),
             `2020` = sum(`2020`, na.rm = TRUE),
             `2021` = sum(`2021`, na.rm = TRUE),
             `2022` = sum(`2022`, na.rm = TRUE),
@@ -221,7 +222,7 @@ ONS_projection_1941_10_year <- ONS_projections_SYOA %>%
          Area_code = AREA_CODE,
          Sex = SEX) %>% 
   mutate(Sex = ifelse(Sex == "Females", "Female", ifelse(Sex == "Males", "Male", Sex))) %>% 
-  gather(Year, Population, `2019`:`2041`, factor_key = TRUE) %>% 
+  gather(Year, Population, `2018`:`2041`, factor_key = TRUE) %>% 
   mutate(Data_type = "Projected - ONS",
          Age_band_type = "10 years")
 
@@ -230,7 +231,8 @@ ONS_projection_1941_broad <- ONS_projections_SYOA %>%
   mutate(Age = as.numeric(gsub(" and over", "", AGE_GROUP))) %>% 
   mutate(`Age group` = ifelse(Age <= 17, "0-17 years", ifelse(Age <= 44, "18-44 years", ifelse(Age <= 64, "45-64 years", "65+ years")))) %>% 
   group_by(AREA_NAME, AREA_CODE, SEX, `Age group`) %>% 
-  summarise(`2019` = sum(`2019`, na.rm = TRUE),
+  summarise(`2018` = sum(`2018`, na.rm = TRUE),
+            `2019` = sum(`2019`, na.rm = TRUE),
             `2020` = sum(`2020`, na.rm = TRUE),
             `2021` = sum(`2021`, na.rm = TRUE),
             `2022` = sum(`2022`, na.rm = TRUE),
@@ -259,7 +261,7 @@ ONS_projection_1941_broad <- ONS_projections_SYOA %>%
          Area_code = AREA_CODE,
          Sex = SEX) %>% 
   mutate(Sex = ifelse(Sex == "Females", "Female", ifelse(Sex == "Males", "Male", Sex))) %>% 
-  gather(Year, Population, `2019`:`2041`, factor_key = TRUE) %>% 
+  gather(Year, Population, `2018`:`2041`, factor_key = TRUE) %>% 
   mutate(Data_type = "Projected - ONS",
          Age_band_type = "broad years")
 
@@ -401,6 +403,7 @@ for(i in 0:floor(as.numeric(read_csv(url(paste0("http://www.nomisweb.co.uk/api/v
   
 }
 
+
 NOMIS_mye_df <- ONS_mye_SYOA %>% 
   bind_rows(ONS_mye_ccg_SYOA) %>% 
   rename(AREA_CODE = GEOGRAPHY_CODE,
@@ -491,12 +494,22 @@ Areas_estimates_file <- ONS_MYE_quinary %>%
   rename(Age_group = `Age group`,
          Area_Name = Area_name)
 
+
+Areas_estimates_file <- Areas_estimates_file %>% 
+  filter(!(Area_Type == "Clinical Commissioning Group (2018)" & Year == "2018"))
+
+Areas_projections_file_ccg_18 <- Areas_projections_file %>% 
+  filter(Area_Type == "Clinical Commissioning Group (2018)" & Year == "2018")
+
+Areas_projections_file <- Areas_projections_file %>% 
+  filter(Year != "2018")
+
 Area_population_df <- Areas_estimates_file %>% 
   bind_rows(Areas_projections_file) %>% 
+  bind_rows(Areas_projections_file_ccg_18) %>% 
   mutate(Source = "Office for National Statistics")
 
 rm(df, i, ONS_mye_SYOA, ONS_mye_ccg_SYOA, ONS_projections_SYOA, ONS_ccg_projections_df, ONS_MYE_10_year, ONS_MYE_broad, ONS_MYE_quinary, ONS_projection_1941_10_year, ONS_projection_1941_broad, ONS_projection_1941_quinary)
-
 
 write.csv(Area_population_df, file = "./Projecting-Health/Area_population_df.csv", row.names = FALSE)
 
